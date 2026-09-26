@@ -1,0 +1,15 @@
+# 不要提交这些（运行时文件与隐私）
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# 运行时生成（数据库/日志/缓存/二维码/会话文件）
+data/*.db
+data/server.*.log
+data/*.json
+data/qrcode*
+data/cache/
+data/stickers/
+data/gif_library/

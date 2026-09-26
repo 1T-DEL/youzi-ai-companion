@@ -1,0 +1,5 @@
+flask>=3.0
+requests>=2.31
+PyYAML>=6.0
+websocket-client>=1.7
+yt-dlp>=2024.4.9
