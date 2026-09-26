@@ -74,6 +74,18 @@
   .chip b { color:#ff5c8a; font-weight:600; }
   .sub-block { border-top:1px dashed #eef0f3; margin-top:14px; padding-top:12px; }
   .sub-block h3 { font-size:13px; color:#4e545c; margin-bottom:10px; font-weight:600; }
+  /* 数字生命调试面板 */
+  .ls-mood { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .ls-mood .badge { font-size:14px; font-weight:600; color:#fff; padding:6px 16px; border-radius:20px; }
+  .ls-mood .str-dot { font-size:12px; color:#8a9099; }
+  .ls-body { font-size:13px; color:#4e545c; background:#fafbfc; border-radius:10px; padding:10px 14px; display:inline-block; }
+  .ls-story { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+  .ls-story .step { display:flex; gap:10px; font-size:13px; color:#4e545c; }
+  .ls-story .step .t { color:#ff5c8a; font-weight:600; min-width:44px; }
+  .ls-echo { margin-top:10px; font-size:12px; color:#8a9099; background:#fff8f6; border-radius:10px; padding:10px 14px; border:1px dashed #f3c8c0; }
+  .ls-block { margin-top:12px; background:#fafbfc; border-radius:10px; padding:10px 14px; font-size:12px; color:#6a7078; white-space:pre-wrap; line-height:1.7; }
+  .ls-tools { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:14px; border-top:1px dashed #eef0f3; padding-top:14px; }
+  .ls-tools .f { flex-direction:column; }
   @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -143,6 +155,48 @@
   </div>
 
   <div class="card">
+    <h2>🧬 数字生命调试 <span class="tag">三层时间尺度 · 每10秒自动刷新，看她"独立运转"</span></h2>
+    <div class="ls-mood">
+      <span class="badge" id="ls_mood_badge" style="background:#ff8fb1;">–</span>
+      <span class="str-dot" id="ls_mood_str"></span>
+      <span class="ls-body" id="ls_body">–</span>
+    </div>
+    <div class="ls-story" id="ls_story"></div>
+    <div class="ls-echo" id="ls_echo" style="display:none;"></div>
+    <div class="ls-echo" id="ls_growth" style="display:none;"></div>
+    <div class="ls-block" id="ls_block"></div>
+    <div class="ls-tools">
+      <div class="f">
+        <label>心情 <span class="k">直接切换（情绪惯性会被打破）</span></label>
+        <div class="row">
+          <select id="ls_mood_sel" style="flex:1; border:1px solid #e3e6eb; border-radius:8px; padding:9px 11px; font-size:14px;">
+            <option>平静</option><option>开心</option><option>想你</option><option>无聊</option><option>小低落</option><option>兴奋</option>
+          </select>
+          <button class="btn ghost" onclick="setMood()">应用</button>
+        </div>
+      </div>
+      <div class="f">
+        <label>身体状态 <span class="k">模拟物理阻碍</span></label>
+        <div class="row">
+          <input type="text" id="ls_body_in" placeholder="正常 / 有点饿 / 有点困 / 不太舒服">
+          <button class="btn ghost" onclick="setBody()">应用</button>
+        </div>
+      </div>
+      <div class="f">
+        <label>今日轨迹 <span class="k">重新随机生成她今天的生活</span></label>
+        <button class="btn ghost" onclick="regenerateStory()">重新生成今天</button>
+      </div>
+      <div class="f full">
+        <label>情绪余韵 <span class="k">模拟"刚才发生的事"（她接下来的回复会带这层余韵）</span></label>
+        <div class="row">
+          <input type="text" id="ls_echo_in" placeholder="例如：刚才看了部有点伤感的电影，心里闷闷的">
+          <button class="btn ghost" onclick="setEcho()">注入</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>④ 记忆库 <span class="tag" id="mem_note">按遗忘曲线衰减</span></h2>
     <div class="sub-block" id="profile_block" style="display:none;">
       <h3>📋 关于你的画像（长期档案）</h3>
@@ -153,7 +207,7 @@
       <div id="summary_txt" class="note" style="margin-top:0; background:#fff8f6; color:#6a7078;"></div>
     </div>
     <table>
-      <thead><tr><th style="width:38%">记得的事</th><th style="width:14%">记忆强度</th><th style="width:12%">提及次数</th><th></th></tr></thead>
+      <thead><tr><th style="width:33%">记得的事</th><th style="width:9%">强度</th><th style="width:24%">意义·细节·情绪</th><th style="width:15%">印象</th><th style="width:6%">提及</th><th></th></tr></thead>
       <tbody id="facts_body"></tbody>
     </table>
     <div class="empty" id="facts_empty" style="display:none;">还没有长期记忆 —— 聊到「生病、加班、吃饭、心情」这类话题时 ta 会记下来</div>
@@ -221,6 +275,7 @@ function drawAffChart(hist){
       const py = padT + (1-(x.score-lo)/span)*ih;
       return [px, py, x.score];
     });
+    // y 轴刻度（0/50/100 或按区间）
     let grids = '';
     for(let v=0; v<=100; v+=25){
       if(v<lo||v>hi) continue;
@@ -293,9 +348,11 @@ async function loadState(){
       '<input type="range" min="0" max="100" value="'+Math.round(v)+'" oninput="adjustTrait(\''+name+'\', this.value)"></div>';
   }
   $('traits').innerHTML = html;
+  // 成长曲线 / 遗忘曲线 / 关系历程
   drawAffChart(s.affection_history || []);
   drawDecayChart(s.half_life_days || 7);
   renderEvents(s.events || []);
+  // 画像与摘要
   const prof = s.profile || {};
   const keys = Object.keys(prof);
   if(keys.length){ $('profile_block').style.display=''; $('profile_chips').innerHTML = keys.map(k=>'<span class="chip"><b>'+k.replace(/</g,'&lt;')+'</b> · '+prof[k].replace(/</g,'&lt;')+'</span>').join(''); }
@@ -303,6 +360,7 @@ async function loadState(){
   const sum = s.summary;
   if(sum && sum.summary){ $('summary_block').style.display=''; $('summary_txt').textContent = sum.summary; }
   else { $('summary_block').style.display='none'; }
+  // 记忆库
   const f = s.facts || [];
   $('mem_note').textContent = '共 ' + s.kept_facts + ' 条生效（半衰期 ' + s.half_life_days + ' 天）';
   if(!f.length){ $('facts_empty').style.display='block'; $('facts_body').innerHTML=''; }
@@ -310,13 +368,19 @@ async function loadState(){
     $('facts_empty').style.display='none';
     $('facts_body').innerHTML = f.map(x=>{
       const cls = x.strength>=60?'hi':(x.strength>=35?'mid':'lo');
+      const imp = x.impression || '';
       return '<tr><td class="mem">'+x.key.replace(/</g,'&lt;')+'<br><span style="color:#9aa0a8;font-size:12px">'+x.value.replace(/</g,'&lt;')+'</span></td>'+
-        '<td><span class="str '+cls+'">'+x.strength+'%</span></td><td>'+x.accesses+'</td>'+
+        '<td><span class="str '+cls+'">'+x.strength+'%</span></td>'+
+        '<td style="font-size:12px;color:#6a7078;white-space:nowrap">'+ (x.meaning||'-') +'% <span style="color:#c0c6cf">/</span> '+ (x.detail||'-') +'% <span style="color:#c0c6cf">/</span> '+ (x.emotion||'-') +'%</td>'+
+        '<td>'+imp+'</td><td>'+x.accesses+'</td>'+
         '<td><button class="del" onclick="deleteFact(\''+x.key.replace(/'/g,"\\'")+'\')">忘掉</button></td></tr>';
     }).join('');
   }
-  $('mem_note2').innerHTML = '💡 遗忘曲线：每条记忆有个「强度」，随时间按半衰期衰减（当前 ' + s.half_life_days + ' 天减半）。' +
-    '再次聊到同一件事会重新加强。强度低于 ' + Math.round(s.threshold*100) + '% 的记忆不再进入对话（即"自然遗忘"）。想手动删除就点「忘掉」。';
+  $('mem_note2').innerHTML = '🧠 多维记忆（参考「小凌」的遗忘模型）：' +
+    '<b>意义</b>＝这件事对你多重要（几乎不忘）· <b>细节</b>＝还记得多少画面细节（忘得最快）· <b>情绪</b>＝当时的感受残留（细节忘了感受还在）。' +
+    '所以会有「记不太清了，但还记得那种感觉」这种真实感。被再次提起会巩固；' +
+    '你提到相关话题或类似情绪时，她会「触景生情」自然浮出记忆并追问（线索检索）。' +
+    '强度低于 ' + Math.round(s.threshold*100) + '% 的不再进入对话（自然遗忘），想手动删除就点「忘掉」。';
 }
 
 let t_timer = {};
@@ -353,8 +417,70 @@ async function clearAll(){
   loadPersona(); loadState();
 }
 
+// ---- 数字生命调试面板 ----
+const LS_MOOD_COLOR = { '平静':'#8a9099','开心':'#ffb3c7','想你':'#ff5c8a','无聊':'#9aa0a8','小低落':'#7b8aa5','兴奋':'#ff9f43' };
+
+async function loadLifesim(){
+  try{
+    const r = await fetch('/api/lifesim'); const d = await r.json();
+    if(!d.ok) return;
+    const b = $('ls_mood_badge');
+    b.textContent = d.mood;
+    b.style.background = LS_MOOD_COLOR[d.mood] || '#ff8fb1';
+    $('ls_mood_str').textContent = '· 余韵: ' + (d.echo || '无');
+    $('ls_body').textContent = '身体：' + d.body;
+    const story = d.story || [];
+    if(story.length){
+      const labels = ['上午','中午','下午','傍晚','晚上'];
+      $('ls_story').innerHTML = story.map((s,i)=>'<div class="step"><span class="t">'+labels[i]+'</span><span>'+s+'</span></div>').join('');
+    } else { $('ls_story').innerHTML = ''; }
+    const echo = d.echo;
+    if(echo){ $('ls_echo').style.display=''; $('ls_echo').textContent = '💭 余韵：' + echo; }
+    else { $('ls_echo').style.display='none'; }
+    $('ls_block').textContent = d.block || '';
+    const g = d.growth || {};
+    const applied = g.applied || {};
+    const names = Object.keys(applied);
+    if(names.length){
+      $('ls_growth').style.display = '';
+      $('ls_growth').textContent = '🌱 后天成长（跨天证据闸门 · 保守上限±5）：' +
+        names.map(n=>n+' +'+Math.round(applied[n])).join('、');
+    } else { $('ls_growth').style.display = 'none'; }
+  }catch(e){}
+}
+
+async function setMood(){
+  const r = await fetch('/api/lifesim/mood',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mood:$('ls_mood_sel').value, strength:2})});
+  const d = await r.json();
+  toast(d.ok ? ('心情已切换为 ' + d.mood) : (d.error || '失败'));
+  if(d.ok) loadLifesim();
+}
+async function setBody(){
+  const v = $('ls_body_in').value.trim();
+  if(!v){ toast('请输入身体状态'); return; }
+  const r = await fetch('/api/lifesim/body',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({body:v})});
+  const d = await r.json();
+  toast(d.ok ? '身体状态已设置' : (d.error || '失败'));
+  if(d.ok) loadLifesim();
+}
+async function regenerateStory(){
+  const r = await fetch('/api/lifesim/story',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  const d = await r.json();
+  toast(d.ok ? '今天的生活已重新生成' : (d.error || '失败'));
+  if(d.ok) loadLifesim();
+}
+async function setEcho(){
+  const v = $('ls_echo_in').value.trim();
+  const r = await fetch('/api/lifesim/echo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({echo:v})});
+  const d = await r.json();
+  toast(d.ok ? '余韵已注入' : (d.error || '失败'));
+  if(d.ok) loadLifesim();
+}
+
 loadPersona(); loadState();
+loadLifesim();
 setInterval(loadState, 30000);
+setInterval(loadLifesim, 10000);
 </script>
 </body>
 </html>

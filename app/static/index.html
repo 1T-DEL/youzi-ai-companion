@@ -103,18 +103,30 @@ body{
     msgs.appendChild(row);
     msgs.scrollTop = msgs.scrollHeight;
   }
-  // 语音播放：把柚子回复用 TTS 合成并朗读
+  // 语音播放：意群分段流式（小凌式）——先按语义意群切分，逐段播放，
+  // 每段短而自然，避免整句一次性合成的"死板 TTS 感"；某段失败自动跳过。
   function playVoice(text){
+    fetch("/api/voice/segments", {method:"POST", headers:{"Content-Type":"application/json"},
+                                  body:JSON.stringify({text:text})})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        var segs = (d && d.ok && d.segments && d.segments.length) ? d.segments : [text];
+        playSegments(segs, 0);
+      })
+      .catch(function(){ playSegments([text], 0); });
+  }
+  function playSegments(segs, i){
+    if (i >= segs.length) return;
     fetch("/api/voice/tts", {method:"POST", headers:{"Content-Type":"application/json"},
-                             body:JSON.stringify({text:text})})
+                             body:JSON.stringify({text:segs[i]})})
       .then(function(r){ if(!r.ok) throw new Error("tts failed"); return r.blob(); })
       .then(function(blob){
         var url = URL.createObjectURL(blob);
         var a = new Audio(url);
-        a.onended = function(){ URL.revokeObjectURL(url); };
+        a.onended = function(){ URL.revokeObjectURL(url); playSegments(segs, i+1); };
         a.play();
       })
-      .catch(function(){ /* 语音未配置或失败时静默 */ });
+      .catch(function(){ playSegments(segs, i+1); });
   }
   function typing(on){
     var t = msgs.querySelector(".row.typing");
