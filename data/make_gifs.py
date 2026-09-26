@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""生成柚子 GIF 动图表情库（data/gif_library/*.gif）
+"""生成 GIF 动图表情库（data/gif_library/*.gif）
 用 Segoe UI Emoji 渲染 + 逐帧动画：心跳/眨眼/摇摆/闪烁/弹跳。
 PIL 逐帧保存为透明背景循环 GIF。手动替换/新增：把 .gif 放进 data/gif_library 即可。
 """
@@ -63,7 +63,6 @@ def blink_face():
     for i in range(8):
         if i == 3 or i == 4:
             img = _emoji_frame("😉", 230)
-            # 垂直压缩中间区域制造"闭眼"
             img = img.crop((0, 60, SIZE, SIZE - 60)).resize((SIZE, SIZE - 120))
             base = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
             base.paste(img, (0, 60))
