@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>电子女友</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",Roboto,sans-serif;
+  background:#ececec;color:#1f2328;font-size:15px;display:flex;justify-content:center;
+}
+#app{width:100%;max-width:520px;height:100vh;display:flex;flex-direction:column;background:#f7f7f7;border-left:1px solid #e4e4e4;border-right:1px solid #e4e4e4;position:relative}
+.head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fafafa;border-bottom:1px solid #e4e4e4}
+.avatar{width:40px;height:40px;border-radius:50%;background:url('/static/avatar.jpg') center/cover no-repeat;display:grid;place-items:center;color:transparent;font-weight:700;font-size:16px;box-shadow:0 3px 10px rgba(249,115,22,.3);overflow:hidden}
+.head .nm{font-weight:650;font-size:15px}
+.head .st{font-size:11.5px;color:#8a9199}
+.dot{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block;margin-right:3px}
+.off .dot{background:#dc2626}
+.clear{margin-left:auto;background:#fff;border:1px solid #e0e0e0;border-radius:8px;padding:5px 9px;font-size:12px;color:#555;cursor:pointer;font-family:inherit}
+.msg{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;align-items:flex-end;gap:8px;max-width:82%}
+.row.me{align-self:flex-end;flex-direction:row-reverse}
+.bub{background:#fff;padding:9px 12px;border-radius:12px;line-height:1.55;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.04);white-space:pre-line}
+.row.me .bub{background:#95ec69}
+.a-av{width:30px;height:30px;border-radius:50%;flex:none;background:url('/static/avatar.jpg') center/cover no-repeat;display:grid;place-items:center;color:transparent;font-size:12px;font-weight:700;overflow:hidden}
+.btn-speak{flex:none;border:none;background:transparent;font-size:13px;cursor:pointer;opacity:.7;padding:0 2px;line-height:1}
+.btn-speak:hover{opacity:1}
+.row.typing .bub{display:flex;gap:4px;align-items:center;padding:12px}
+.row.typing .bub i{width:6px;height:6px;border-radius:50%;background:#bbb;animation:bl 1s infinite}
+.row.typing .bub i:nth-child(2){animation-delay:.2s}
+.row.typing .bub i:nth-child(3){animation-delay:.4s}
+@keyframes bl{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.enter{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fafafa;border-top:1px solid #e4e4e4}
+.enter input{flex:1;height:42px;border:1px solid #e0e0e0;border-radius:10px;padding:0 12px;font-size:15px;outline:none;background:#fff;font-family:inherit}
+.enter input:focus{border-color:#f97316}
+.enter button{height:42px;padding:0 18px;border:none;border-radius:10px;font-size:15px;cursor:pointer;font-family:inherit}
+.btn-send{background:linear-gradient(135deg,#fb923c,#f97316);color:#fff}
+.btn-send:disabled{opacity:.5;cursor:not-allowed}
+.btn-voice{background:#fff;border:1px solid #e0e0e0!important;color:#444;width:44px;padding:0!important;font-size:18px}
+.btn-voice.rec{background:#f97316;color:#fff}
+#recBar{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);background:#1f2328;color:#fff;font-size:12.5px;padding:7px 14px;border-radius:99px;opacity:0;pointer-events:none;transition:.2s;z-index:5}
+#recBar.on{opacity:1}
+.foot{font-size:11px;color:#a6adb4;text-align:center;padding:6px 0;background:#f7f7f7}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="head">
+    <div class="avatar" id="avatar">女</div>
+    <div>
+      <div class="nm" id="pName">电子女友</div>
+      <div class="st off" id="pStatus"><span class="dot"></span><span id="stTxt">连接中…</span></div>
+    </div>
+    <button class="clear" id="btnClear">清空记忆</button>
+  </div>
+  <div class="msg" id="msg"></div>
+  <div class="enter">
+    <button class="btn-voice" id="btnVoice" title="语音输入未启用（当前用打字即可）" disabled style="opacity:.4;cursor:not-allowed">🎤</button>
+    <input id="input" placeholder="和她说点什么…" autocomplete="off">
+    <button class="btn-send" id="btnSend">发送</button>
+  </div>
+  <div id="recBar">正在录音… 松开结束</div>
+  <div class="foot">本地部署 · 聊天记录仅存本机 · 她是模型，但会认真陪你</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(s){ return document.querySelector(s); };
+  var msgs = $("#msg"), pName = $("#pName"), pStatus = $("#pStatus"), stTxt = $("#stTxt");
+  var input = $("#input"), btnSend = $("#btnSend"), btnVoice = $("#btnVoice");
+  var afterId = 0, persona = "电子女友", pollTimer = null;
+
+  function avatar(){
+    var a = persona.trim().slice(0,1) || "女";
+    $("#avatar").textContent = a;
+  }
+  function setStatus(ok, txt){
+    pStatus.classList.toggle("off", !ok);
+    stTxt.textContent = txt;
+  }
+
+  function el(tag, cls, text){
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    if (text !== undefined) d.textContent = text;
+    return d;
+  }
+  function addRow(role, content){
+    var row = el("div", "row" + (role === "user" ? " me" : ""));
+    var bub = el("div", "bub", content);
+    if (role === "assistant"){
+      var av = el("div", "a-av", persona.trim().slice(0,1) || "女");
+      row.appendChild(av);
+      var spk = el("button", "btn-speak", "🔊");
+      spk.title = "播放语音";
+      spk.onclick = function(){ playVoice(content); };
+      row.appendChild(spk);
+    }
+    row.appendChild(bub);
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  // 语音播放：把柚子回复用 TTS 合成并朗读
+  function playVoice(text){
+    fetch("/api/voice/tts", {method:"POST", headers:{"Content-Type":"application/json"},
+                             body:JSON.stringify({text:text})})
+      .then(function(r){ if(!r.ok) throw new Error("tts failed"); return r.blob(); })
+      .then(function(blob){
+        var url = URL.createObjectURL(blob);
+        var a = new Audio(url);
+        a.onended = function(){ URL.revokeObjectURL(url); };
+        a.play();
+      })
+      .catch(function(){ /* 语音未配置或失败时静默 */ });
+  }
+  function typing(on){
+    var t = msgs.querySelector(".row.typing");
+    if (on){
+      if (t) return;
+      var row = el("div", "row typing");
+      row.appendChild(el("div", "a-av", persona.trim().slice(0,1) || "女"));
+      var bub = el("div", "bub");
+      bub.appendChild(el("i")); bub.appendChild(el("i")); bub.appendChild(el("i"));
+      row.appendChild(bub);
+      msgs.appendChild(row); msgs.scrollTop = msgs.scrollHeight;
+    } else if (t){
+      t.remove();
+    }
+  }
+
+  function addMsg(id, role, content){
+    if (id <= afterId) return;
+    afterId = Math.max(afterId, id);
+    addRow(role, content);
+  }
+
+  function poll(){
+    fetch("/api/messages?after=" + afterId)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.persona) { persona = d.persona; pName.textContent = d.persona; avatar(); }
+        (d.messages || []).forEach(function(m){ addMsg(m.id, m.role, m.content); });
+      }).catch(function(){ setStatus(false, "服务未连接"); });
+  }
+
+  function send(text){
+    if (!text) return;
+    addRow("user", text);
+    input.value = "";
+    btnSend.disabled = true;
+    typing(true);
+    fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({message: text})
+    }).then(function(r){ return r.json(); })
+      .then(function(d){
+        typing(false); btnSend.disabled = false;
+        if (d.ok) addRow("assistant", d.reply);
+        else addRow("assistant", "（出错了：" + (d.error || "未知") + "）");
+        setStatus(true, "在线");
+      }).catch(function(){
+        typing(false); btnSend.disabled = false;
+        addRow("assistant", "（连不上服务，检查 run.ps1 是否在运行）");
+        setStatus(false, "离线");
+      });
+  }
+
+  btnSend.addEventListener("click", function(){ send(input.value.trim()); });
+  input.addEventListener("keydown", function(e){ if (e.key === "Enter") send(input.value.trim()); });
+  $("#btnClear").addEventListener("click", function(){
+    if (!confirm("确定清空全部聊天记录和记忆吗？")) return;
+    fetch("/api/reset", {method:"POST", headers:{"Content-Type":"application/json"}, body:"{}"})
+      .then(function(){ afterId = 0; msgs.innerHTML = ""; });
+  });
+
+  // ---- 语音（按住录音 → 转写 → 发送） ----
+  var mediaRec = null, chunks = [], recBar = $("#recBar"), recOn = false, recording = false;
+
+  function startRec(){
+    if (recording) return;
+    if (!navigator.mediaDevices || !window.MediaRecorder){
+      alert("浏览器不支持录音，请用 Chrome/Edge 打开");
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+      recording = true;
+      btnVoice.classList.add("rec");
+      recBar.classList.add("on");
+      chunks = [];
+      mediaRec = new MediaRecorder(stream);
+      mediaRec.ondataavailable = function(e){ if (e.data.size) chunks.push(e.data); };
+      mediaRec.onstop = function(){
+        recording = false;
+        btnVoice.classList.remove("rec");
+        recBar.classList.remove("on");
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        var blob = new Blob(chunks, {type:"audio/webm"});
+        upload(blob);
+      };
+      mediaRec.start();
+    }).catch(function(){ alert("无法获取麦克风权限"); });
+  }
+  function endRec(){
+    if (mediaRec && mediaRec.state === "recording") mediaRec.stop();
+  }
+  function upload(blob){
+    var fd = new FormData();
+    fd.append("audio", blob, "voice.webm");
+    setStatus(true, "语音转写中…");
+    fetch("/api/voice/asr", {method:"POST", body:fd})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.ok && d.text){ input.value = d.text; send(d.text); }
+        else { addRow("assistant", "（没听清，或语音未配置）"); setStatus(true, "在线"); }
+      });
+  }
+  btnVoice.addEventListener("mousedown", startRec);
+  btnVoice.addEventListener("mouseup", endRec);
+  btnVoice.addEventListener("mouseleave", endRec);
+  btnVoice.addEventListener("touchstart", function(e){ e.preventDefault(); startRec(); });
+  btnVoice.addEventListener("touchend", endRec);
+
+  // ---- 启动 ----
+  fetch("/api/health").then(function(r){ return r.json(); }).then(function(d){
+    persona = d.persona || "电子女友";
+    pName.textContent = persona; avatar();
+    setStatus(true, "在线" + (d.llm_configured ? "" : " · 演示模式"));
+  }).catch(function(){ setStatus(false, "离线"); });
+  poll();
+  pollTimer = setInterval(poll, 5000);
+})();
+</script>
+</body>
+</html>
