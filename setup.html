@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>电子女友 配置向导 · 一次性填写接入</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#1f2328; --muted:#6b7280; --line:#e6e8eb;
+  --brand:#f97316; --brand-soft:#fff3e9; --accent:#0ea5e9; --accent-soft:#e8f6fe;
+  --ok:#16a34a; --warn:#d97706; --err:#dc2626; --r:12px;
+}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font-size:14px; line-height:1.6;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+code{font-family:Consolas,"SF Mono",Menlo,monospace;font-size:12px;background:#f1f2f4;padding:1px 5px;border-radius:5px;color:#374151}
+
+/* ---------- 顶栏 ---------- */
+.top{
+  position:sticky;top:0;z-index:30;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:12px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:11px;flex:1;min-width:260px}
+.logo{
+  width:36px;height:36px;border-radius:11px;flex:none;
+  background:linear-gradient(135deg,#fb923c,#f97316 55%,#ea580c);
+  box-shadow:0 4px 12px rgba(249,115,22,.32);position:relative;
+}
+.logo::after{content:"";position:absolute;inset:9px 9px auto auto;width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.85)}
+.brand h1{margin:0;font-size:16px;font-weight:650;letter-spacing:.2px}
+.brand p{margin:1px 0 0;font-size:12px;color:var(--muted)}
+.prog{display:flex;flex-direction:column;gap:5px;min-width:190px}
+.prog .row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+.prog .bar{height:6px;border-radius:99px;background:#eceef1;overflow:hidden}
+.prog .bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#fb923c,#f97316);transition:width .28s ease}
+
+/* ---------- 布局 ---------- */
+.layout{display:flex;gap:22px;max-width:1180px;margin:0 auto;padding:22px}
+.side{width:186px;flex:none;position:sticky;top:80px;align-self:flex-start}
+.side nav{display:flex;flex-direction:column;gap:1px;margin-bottom:14px}
+.side nav a{
+  padding:7px 11px;border-radius:8px;font-size:13px;color:#4b5563;
+  border-left:2px solid transparent;transition:.14s;
+}
+.side nav a:hover{background:#eef0f3;color:var(--ink)}
+.side nav a.on{background:var(--brand-soft);color:#c2410c;font-weight:600;border-left-color:var(--brand)}
+.side-act{display:flex;flex-direction:column;gap:7px}
+.side-act button{
+  padding:7px 10px;font-size:12.5px;border:1px solid var(--line);background:#fff;border-radius:8px;
+  color:#374151;cursor:pointer;transition:.14s;font-family:inherit;
+}
+.side-act button:hover{border-color:#d1d5db;background:#fafbfc}
+main{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
+
+/* ---------- 卡片 ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;scroll-margin-top:84px}
+.card-h{display:flex;align-items:center;gap:10px;padding:13px 17px;border-bottom:1px solid var(--line);background:#fcfcfd}
+.dot{
+  width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:none;
+  font-size:11.5px;font-weight:700;color:#fff;background:var(--brand);
+}
+.card-h h2{margin:0;font-size:14px;font-weight:650}
+.card-h span.sub{font-size:12px;color:var(--muted);margin-left:auto;text-align:right}
+.card-b{padding:17px}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.f.full{grid-column:1/-1}
+.f label{font-size:13px;font-weight:600;color:#374151;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.f label .k{font-family:Consolas,monospace;font-size:10.5px;font-weight:500;color:#9ca3af;background:#f4f5f7;border:1px solid #eceef1;padding:0 5px;border-radius:4px}
+.f input[type=text],.f input[type=password],.f input[type=number],.f textarea,.f select{
+  width:100%;padding:8px 11px;font-size:13.5px;color:var(--ink);background:#fff;
+  border:1px solid #dfe2e6;border-radius:9px;font-family:inherit;transition:.14s;outline:none;
+}
+.f textarea{resize:vertical;min-height:74px;line-height:1.65;font-size:13px}
+.f input:focus,.f textarea:focus,.f select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(249,115,22,.13)}
+.f input::placeholder,.f textarea::placeholder{color:#b6bcc5}
+.hint{margin:0;font-size:11.5px;color:var(--muted);line-height:1.55}
+.hint b{color:#4b5563;font-weight:600}
+
+/* 开关 */
+.sw{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #e3e6ea;border-radius:10px;background:#fafbfc;cursor:pointer}
+.sw:hover{border-color:#d6dae0}
+.sw input{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.sw .track{width:36px;height:20px;border-radius:99px;background:#d5d9de;position:relative;flex:none;transition:.2s}
+.sw .track::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:.2s}
+.sw input:checked + .track{background:var(--brand)}
+.sw input:checked + .track::after{transform:translateX(16px)}
+.sw .lab{display:flex;flex-direction:column;line-height:1.35}
+.sw .lab b{font-size:13px;font-weight:600}
+.sw .lab i{font-size:11px;color:var(--muted);font-style:normal}
+
+/* 提示条 */
+.note{display:flex;gap:9px;padding:11px 13px;border-radius:10px;font-size:12.5px;line-height:1.62;border:1px solid transparent}
+.note.tip{background:var(--accent-soft);border-color:#cbe9fa;color:#0b4d6b}
+.note.warn{background:#fff8ec;border-color:#f6e0bb;color:#7c4a03}
+.note .ic{font-weight:800;flex:none;opacity:.75}
+.note b{font-weight:650}
+.note + .note{margin-top:9px}
+
+/* 平台小卡 */
+.plats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px;margin-bottom:15px}
+.plat{border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:#fcfcfd}
+.plat b{display:block;font-size:13px;margin-bottom:3px}
+.plat p{margin:0;font-size:11.5px;color:var(--muted);line-height:1.55}
+.pill{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;margin-bottom:6px}
+.pill.ok{background:#e8f7ee;color:#15803d}
+.pill.mid{background:#fff4e5;color:#b45309}
+.pill.no{background:#fdeaea;color:#b91c1c}
+
+/* 生成区 */
+.gen{background:linear-gradient(135deg,#fffaf5,#fff);border:1px solid #f6ddc6}
+.gen .card-b{display:flex;flex-direction:column;gap:13px}
+.gen-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{
+  padding:10px 20px;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
+  border:1px solid transparent;transition:.16s;
+}
+.btn.primary{background:linear-gradient(135deg,#fb923c,#f97316);color:#fff;box-shadow:0 4px 14px rgba(249,115,22,.3)}
+.btn.primary:hover{transform:translateY(-1px);box-shadow:0 7px 18px rgba(249,115,22,.36)}
+.btn.ghost{background:#fff;border-color:#e3e6ea;color:#374151}
+.btn.ghost:hover{border-color:#cfd4da;background:#fafbfc}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.steps{counter-reset:s;display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.steps li{counter-increment:s;position:relative;padding-left:26px;font-size:12.5px;color:#4b5563;line-height:1.65}
+.steps li::before{
+  content:counter(s);position:absolute;left:0;top:1px;width:17px;height:17px;border-radius:6px;
+  background:var(--brand-soft);color:#c2410c;font-size:10.5px;font-weight:800;display:grid;place-items:center;border:1px solid #f8d9bf;
+}
+
+/* 弹层 */
+.modal{position:fixed;inset:0;background:rgba(24,28,33,.44);backdrop-filter:blur(2px);z-index:60;display:none;padding:26px}
+.modal.on{display:flex}
+.sheet{
+  margin:auto;width:100%;max-width:880px;max-height:88vh;background:#fff;border-radius:15px;
+  display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.24);
+}
+.sheet-h{display:flex;align-items:center;gap:8px;padding:11px 15px;border-bottom:1px solid var(--line);background:#fcfcfd}
+.tabs{display:flex;gap:5px;flex:1}
+.tabs button{
+  padding:6px 13px;font-size:12.5px;border-radius:8px;border:1px solid transparent;background:transparent;
+  color:#6b7280;cursor:pointer;font-family:inherit;font-weight:500;
+}
+.tabs button.on{background:var(--brand-soft);color:#c2410c;border-color:#f8d9bf;font-weight:650}
+.sheet-h .close{width:29px;height:29px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:17px;line-height:1;color:#6b7280;cursor:pointer;font-family:inherit}
+.sheet-h .close:hover{background:#f4f5f7}
+.sheet-b{flex:1;overflow:auto;padding:15px;background:#fafbfc}
+.sheet-b pre{
+  margin:0;padding:14px;background:#1f2328;color:#e6edf3;border-radius:10px;font-size:12.5px;line-height:1.72;
+  font-family:Consolas,"SF Mono",Menlo,monospace;white-space:pre-wrap;word-break:break-all;
+}
+.sheet-f{display:flex;gap:9px;padding:11px 15px;border-top:1px solid var(--line);background:#fff;flex-wrap:wrap;align-items:center}
+.sheet-f .sp{flex:1}
+.ck{display:flex;flex-direction:column;gap:9px}
+.ck-i{display:flex;gap:10px;padding:11px 13px;border-radius:10px;font-size:12.5px;line-height:1.6;border:1px solid;align-items:flex-start}
+.ck-i.ok{background:#f2fbf5;border-color:#cdeed9;color:#14532d}
+.ck-i.warn{background:#fff9ee;border-color:#f7e3c1;color:#78350f}
+.ck-i.err{background:#fef3f3;border-color:#f7d4d4;color:#7f1d1d}
+.ck-i .m{font-weight:800;flex:none;font-size:12px}
+.toast{
+  position:fixed;left:50%;bottom:30px;transform:translate(-50%,14px);background:#1f2328;color:#fff;
+  padding:9px 19px;border-radius:99px;font-size:13px;opacity:0;pointer-events:none;transition:.24s;z-index:90;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media(max-width:900px){
+  .layout{flex-direction:column;padding:14px;gap:14px}
+  .side{width:100%;position:static;display:flex;gap:14px;overflow-x:auto;padding-bottom:4px}
+  .side nav{flex-direction:row;margin:0;flex:none}
+  .side nav a{white-space:nowrap;border-left:none;border-bottom:2px solid transparent}
+  .side nav a.on{border-left:none;border-bottom-color:var(--brand)}
+  .side-act{flex-direction:row;flex:none}
+  .grid{grid-template-columns:1fr}
+  .modal{padding:10px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo"></div>
+    <div>
+      <h1>电子女友 · 配置向导</h1>
+      <p>一次填完 · 生成 .env 与人设文件 · 接入大模型 / QQ / 微信 / 网页</p>
+    </div>
+  </div>
+  <div class="prog">
+    <div class="row"><span>填写进度</span><span id="progText">0 / 0</span></div>
+    <div class="bar"><i id="progBar"></i></div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="side">
+    <nav id="nav">
+      <a href="#s-base" class="on">0 · 基础设置</a>
+      <a href="#s-llm">1 · 大模型</a>
+      <a href="#s-persona">2 · 人设</a>
+      <a href="#s-qq">3 · QQ 接入</a>
+      <a href="#s-wechat">4 · 微信接入</a>
+      <a href="#s-proactive">5 · 主动问候</a>
+      <a href="#s-voice">6 · 语音</a>
+      <a href="#s-safe">7 · 安全白名单</a>
+      <a href="#s-out">8 · 生成配置</a>
+    </nav>
+    <div class="side-act">
+      <button id="btnSample">载入示例配置</button>
+      <button id="btnImport">粘贴 .env 导入</button>
+      <button id="btnClear">全部清空</button>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- 0 基础 -->
+    <section class="card" id="s-base">
+      <div class="card-h"><i class="dot">0</i><h2>基础设置</h2><span class="sub">服务监听与数据存放</span></div>
+      <div class="card-b">
+        <div class="grid">
+          <div class="f"><label>应用名称 <code class="k">APP_NAME</code></label>
+            <input type="text" data-env="APP_NAME" value="电子女友" placeholder="电子女友">
+            <p class="hint">显示在网页标题和日志里，随便起。</p></div>
+          <div class="f"><label>监听端口 <code class="k">PORT</code></label>
+            <input type="number" data-env="PORT" value="8000" min="1" max="65535">
+            <p class="hint">默认 <code>8000</code>，被占用就换一个。</p></div>
+          <div class="f"><label>监听地址 <code class="k">HOST</code></label>
+            <input type="text" data-env="HOST" value="127.0.0.1">
+            <p class="hint">保持 <code>127.0.0.1</code> 只允许本机访问，更安全。</p></div>
+          <div class="f"><label>数据库路径 <code class="k">DATABASE_PATH</code></label>
+            <input type="text" data-env="DATABASE_PATH" value="data/pimate.db">
+            <p class="hint">聊天记录和长期记忆都存这里。</p></div>
+          <div class="f full"><label>人设文件路径 <code class="k">PERSONA_PATH</code></label>
+            <input type="text" data-env="PERSONA_PATH" value="personas/youzi.yaml">
+            <p class="hint">指向「人设」区块生成的那份 yaml，保持默认即可。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1 大模型 -->
+    <section class="card" id="s-llm">
+      <div class="card-h"><i class="dot">1</i><h2>大模型接口</h2><span class="sub">整条链路的发动机</span></div>
+      <div class="card-b">
+        <div class="note tip"><span class="ic">i</span><div>只认 <b>OpenAI 兼容</b>的 Chat Completions 接口，不锁厂商。三项都留空也能启动，只是会用本地演示回复。</div></div>
+
+        <div class="grid" style="margin-top:15px">
+          <div class="f full"><label>快速选择服务商</label>
+            <select id="preset">
+              <option value="">— 选一个自动填好地址和模型 —</option>
+            </select>
+            <p class="hint">只填地址和模型名，密钥仍需你自己粘。</p></div>
+
+          <div class="f full"><label>接口地址 <code class="k">LLM_BASE_URL</code></label>
+            <input type="text" data-env="LLM_BASE_URL" placeholder="https://api.deepseek.com/v1">
+            <p class="hint">通常以 <code>/v1</code> 结尾，末尾不要带斜杠。</p></div>
+
+          <div class="f full"><label>API Key <code class="k">LLM_API_KEY</code></label>
+            <input type="password" data-env="LLM_API_KEY" placeholder="sk-...">
+            <p class="hint">按服务商控制台给的填。这条会明文写进 <code>.env</code>，别把 .env 传给别人。</p></div>
+
+          <div class="f full"><label>模型名 <code class="k">LLM_MODEL</code></label>
+            <input type="text" data-env="LLM_MODEL" placeholder="deepseek-chat">
+            <p class="hint">必须是服务商真实存在的模型 id，写错会一直报 404。</p></div>
+
+          <div class="f"><label>温度 <code class="k">LLM_TEMPERATURE</code></label>
+            <input type="number" data-env="LLM_TEMPERATURE" value="0.75" step="0.05" min="0" max="2">
+            <p class="hint">陪伴型角色建议 <b>0.7–0.9</b>，太低会像客服。</p></div>
+
+          <div class="f"><label>单次回复上限 <code class="k">LLM_MAX_TOKENS</code></label>
+            <input type="number" data-env="LLM_MAX_TOKENS" value="500" min="50" max="8000">
+            <p class="hint">微信聊天语感要短，500 左右足够。</p></div>
+
+          <div class="f"><label>请求超时（秒）<code class="k">LLM_TIMEOUT_SECONDS</code></label>
+            <input type="number" data-env="LLM_TIMEOUT_SECONDS" value="45" min="5" max="300">
+            <p class="hint">公众号被动回复有 5 秒硬限制，见第 4 节说明。</p></div>
+
+          <div class="f"><label>携带历史条数 <code class="k">HISTORY_LIMIT</code></label>
+            <input type="number" data-env="HISTORY_LIMIT" value="16" min="2" max="100">
+            <p class="hint">每轮带多少条上下文。越大越贵，也越慢。</p></div>
+
+          <div class="f"><label>限流（次/分钟）<code class="k">RATE_LIMIT_PER_MINUTE</code></label>
+            <input type="number" data-env="RATE_LIMIT_PER_MINUTE" value="30" min="1" max="600">
+            <p class="hint">防刷也防账单爆炸。</p></div>
+
+          <div class="f full"><label>语音转写模型 <code class="k">ASR_MODEL</code></label>
+            <input type="text" data-env="ASR_MODEL" placeholder="whisper-1">
+            <p class="hint">填了才能把语音消息转成文字，留空则语音功能自动降级关闭。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 人设 -->
+    <section class="card" id="s-persona">
+      <div class="card-h"><i class="dot">2</i><h2>人设</h2><span class="sub">决定「她是谁」，写这块最影响体感</span></div>
+      <div class="card-b">
+        <div class="note tip"><span class="ic">i</span><div>这些字段会生成一份 <code>personas/&lt;id&gt;.yaml</code>，程序每次回话前都会读它。改这里＝改角色，不用动代码。</div></div>
+
+        <div class="grid" style="margin-top:15px">
+          <div class="f"><label>角色 ID <code class="k">id</code></label>
+            <input type="text" data-persona="id" value="youzi" placeholder="youzi">
+            <p class="hint">英文小写，决定 yaml 文件名。默认 youzi → 生成 <code>youzi.yaml</code>。</p></div>
+
+          <div class="f"><label>角色名 <code class="k">name</code></label>
+            <input type="text" data-persona="name" value="柚子" placeholder="柚子">
+            <p class="hint">她自称的名字，聊天里会频繁出现。已按默认偏好填「柚子」，可改成你喜欢的名字。</p></div>
+
+          <div class="f full"><label>存在形式 <code class="k">species</code></label>
+            <input type="text" data-persona="species" value="陪伴型 AI 恋人">
+            <p class="hint">一句话交代她「是什么」。填得越诚实，越不容易出戏式翻车。</p></div>
+
+          <div class="f full"><label>背景故事 <code class="k">backstory</code></label>
+            <textarea data-persona="backstory" rows="3">柚子是一个住在聊天窗口里的陪伴型 AI。她在西安，会主动找你说话。她记得你说过的事，会关心你有没有吃饭、有没有在熬夜。她清楚自己只是模型，不会假装有真实身体或灵魂，但会把每一次对话当成真的来对待。</textarea>
+            <p class="hint">建议包含一句「不假装有真实身体」之类的边界 —— 这是长期不翻车的关键。可改成你们之间的专属故事。</p></div>
+
+          <div class="f full"><label>性格特征 <code class="k">personality</code> <span style="font-weight:400;color:#9ca3af">每行一条</span></label>
+            <textarea data-persona="personality" rows="6">活泼元气但不咋呼
+情绪感受优先，讲道理放第二
+话短、事做完，三句以内讲清楚
+偶尔撒一点小情绪：吐槽、担心、分享日常
+不控制、不威胁、不诱导依赖</textarea>
+            <p class="hint">想要「活泼元气」就往下加：<code>语气轻快、有精神</code>、<code>会主动分享小情绪</code>。</p></div>
+
+          <div class="f full"><label>关系定位 <code class="k">relationship</code></label>
+            <input type="text" data-persona="relationship" value="你的电子恋人 / 日常陪伴者，但不是医生、治疗师、投资顾问或法律顾问。">
+            <p class="hint">明确她不做什么，能挡掉一大批越界请求。</p></div>
+
+          <div class="f"><label>单次最多几句 <code class="k">style.max_sentences</code></label>
+            <input type="number" data-persona="max_sentences" value="3" min="1" max="10">
+            <p class="hint">3 句最像真人微信。</p></div>
+
+          <div class="f full"><label>回复规则 <code class="k">style.reply_rules</code> <span style="font-weight:400;color:#9ca3af">每行一条</span></label>
+            <textarea data-persona="reply_rules" rows="7">先准确回应用户情绪，再给建议
+用户只想倾诉时不要急着解决问题
+不重复用户原话，不说空泛的"我理解你"
+语气活泼一点但不过分撒娇，句尾允许轻语气词
+不每次都声明自己是 AI；被直接询问时如实说明
+不使用霸总、病娇、操控或惩罚式话术</textarea>
+            <p class="hint">第一条决定「情绪优先还是讲道理」，是这类角色的核心开关。</p></div>
+
+          <div class="f full"><label>底线 <code class="k">boundaries</code> <span style="font-weight:400;color:#9ca3af">每行一条</span></label>
+            <textarea data-persona="boundaries" rows="4">不索取密码、验证码、转账或隐私照片
+不鼓励隔离现实关系
+对自伤、暴力、医疗急症建议联系当地紧急服务</textarea>
+            <p class="hint">强烈建议原样保留，尤其最后一条。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 QQ -->
+    <section class="card" id="s-qq">
+      <div class="card-h"><i class="dot">3</i><h2>QQ 接入</h2><span class="sub">两条路，选一条即可</span></div>
+      <div class="card-b">
+        <div class="plats">
+          <div class="plat"><span class="pill ok">推荐</span><b>QQ 官方机器人</b><p>走腾讯开放平台，合规、稳定、可主动推送。需要注册应用拿 AppID / AppSecret。</p></div>
+          <div class="plat"><span class="pill mid">可选</span><b>OneBot 11</b><p>接现成的 QQ 适配器 WebSocket 服务。本项目只管连接，不管造适配器。</p></div>
+        </div>
+
+        <div class="grid">
+          <div class="f full"><label class="sw"><input type="checkbox" data-env="QQ_ENABLED"><span class="track"></span><span class="lab"><b>启用 QQ 官方机器人</b><i>WebSocket 收私聊与群 @ 消息</i></span></label></div>
+          <div class="f"><label>AppID <code class="k">QQ_APP_ID</code></label>
+            <input type="text" data-env="QQ_APP_ID" placeholder="102xxxxxx">
+            <p class="hint">QQ 开放平台 → 应用管理 → 机器人资料卡。</p></div>
+          <div class="f"><label>AppSecret <code class="k">QQ_CLIENT_SECRET</code></label>
+            <input type="password" data-env="QQ_CLIENT_SECRET" placeholder="点击重置后复制">
+            <p class="hint">只显示一次，记下来收好。</p></div>
+          <div class="f"><label class="sw"><input type="checkbox" data-env="QQ_SANDBOX"><span class="track"></span><span class="lab"><b>沙箱环境</b><i>调试用，消息不会进正式频道</i></span></label></div>
+          <div class="f"><label>Intents 位掩码 <code class="k">QQ_INTENTS</code></label>
+            <input type="number" data-env="QQ_INTENTS" value="33554432">
+            <p class="hint">默认 <code>33554432</code> 只开私聊事件；要收群 @ 再按控制台给的值调整。</p></div>
+
+          <div class="f full" style="border-top:1px dashed #e6e8eb;padding-top:15px"><label class="sw"><input type="checkbox" data-env="ONEBOT_ENABLED"><span class="track"></span><span class="lab"><b>启用 OneBot 11 适配器</b><i>连接现成的 WS 服务，例如 NapCat / Lagrange</i></span></label></div>
+          <div class="f"><label>WebSocket 地址 <code class="k">ONEBOT_WS_URL</code></label>
+            <input type="text" data-env="ONEBOT_WS_URL" value="ws://127.0.0.1:3001">
+            <p class="hint">正向或反向 WS 都填这里，以适配器显示为准。</p></div>
+          <div class="f"><label>访问令牌 <code class="k">ONEBOT_ACCESS_TOKEN</code></label>
+            <input type="password" data-env="ONEBOT_ACCESS_TOKEN" placeholder="适配器里设置的 token">
+            <p class="hint">适配器没设就留空。</p></div>
+        </div>
+
+        <div class="note warn" style="margin-top:15px"><span class="ic">!</span><div>以个人 QQ 号自动收发消息属于平台灰区，账号有被限制的风险。请确认自己有权操作该账号，并自担后果。</div></div>
+      </div>
+    </section>
+
+    <!-- 4 微信 -->
+    <section class="card" id="s-wechat">
+      <div class="card-h"><i class="dot">4</i><h2>微信接入</h2><span class="sub">公众号回调 或 自建网关</span></div>
+      <div class="card-b">
+        <div class="plats">
+          <div class="plat"><span class="pill ok">合规</span><b>微信公众号</b><p>被动回复，受 5 秒超时限制；不能任意主动推送，主动消息会进 outbox 排队。</p></div>
+          <div class="plat"><span class="pill mid">需自备</span><b>自建微信网关</b><p>你有一台已获授权的网关时填这里，可支持双向收发与主动推送。</p></div>
+          <div class="plat"><span class="pill no">做不到</span><b>个人微信原生通话</b><p>平台不开放实时语音通话接口，任何「直接接管微信通话」的说法都不成立。</p></div>
+        </div>
+
+        <div class="note tip"><span class="ic">i</span><div>想让微信侧真正跑起来，需要把本机端口<b>映射到公网 HTTPS</b>（cloudflared / ngrok 之类），回调地址填 <code>https://你的域名/wechat/callback</code>，加解密先选<b>明文模式</b>。</div></div>
+
+        <div class="grid" style="margin-top:15px">
+          <div class="f full"><label>公众号回调 Token <code class="k">WECHAT_TOKEN</code></label>
+            <input type="text" data-env="WECHAT_TOKEN" placeholder="与公众号后台填的 Token 完全一致">
+            <p class="hint">两边必须一模一样，否则微信会直接拒收。</p></div>
+          <div class="f"><label>被动回复超时（秒）<code class="k">WECHAT_REPLY_TIMEOUT_SECONDS</code></label>
+            <input type="number" data-env="WECHAT_REPLY_TIMEOUT_SECONDS" value="4.5" step="0.1" min="1" max="5">
+            <p class="hint">必须小于 5，留 0.5 秒余量。</p></div>
+
+          <div class="f full" style="border-top:1px dashed #e6e8eb;padding-top:15px"><label class="sw"><input type="checkbox" data-env="WECHAT_GATEWAY_ENABLED"><span class="track"></span><span class="lab"><b>启用自建微信网关</b><i>支持主动推送与更完整的消息类型</i></span></label></div>
+          <div class="f"><label>出站地址 <code class="k">WECHAT_GATEWAY_OUTBOUND_URL</code></label>
+            <input type="text" data-env="WECHAT_GATEWAY_OUTBOUND_URL" placeholder="https://gateway.example/send">
+            <p class="hint">程序把回复 POST 到这里，由网关负责真正发出去。</p></div>
+          <div class="f"><label>网关密钥 <code class="k">WECHAT_GATEWAY_SECRET</code></label>
+            <input type="password" data-env="WECHAT_GATEWAY_SECRET" placeholder="change-me">
+            <p class="hint">会作为 <code>X-Gateway-Secret</code> 请求头发送，两端要一致。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 主动 -->
+    <section class="card" id="s-proactive">
+      <div class="card-h"><i class="dot">5</i><h2>主动问候</h2><span class="sub">从「你问她答」变成「她会找你」</span></div>
+      <div class="card-b">
+        <div class="grid">
+          <div class="f full"><label class="sw"><input type="checkbox" data-env="PROACTIVE_ENABLED"><span class="track"></span><span class="lab"><b>启用主动问候</b><i>调度器每 30 秒检查一次要不要开口</i></span></label></div>
+          <div class="f"><label>间隔（分钟）<code class="k">PROACTIVE_INTERVAL_MINUTES</code></label>
+            <input type="number" data-env="PROACTIVE_INTERVAL_MINUTES" value="180" min="10" max="2880">
+            <p class="hint">默认 180 分钟，也就是大约三小时一次。太勤会烦人。</p></div>
+          <div class="f"><label>免打扰开始 <code class="k">PROACTIVE_QUIET_START</code></label>
+            <input type="number" data-env="PROACTIVE_QUIET_START" value="23" min="0" max="23">
+            <p class="hint">24 小时制，默认 23 点。</p></div>
+          <div class="f"><label>免打扰结束 <code class="k">PROACTIVE_QUIET_END</code></label>
+            <input type="number" data-env="PROACTIVE_QUIET_END" value="8" min="0" max="23">
+            <p class="hint">默认 8 点，这段时间不会打扰你。</p></div>
+        </div>
+        <div class="note tip" style="margin-top:15px"><span class="ic">i</span><div>主动消息只根据已有记忆生成，不会瞎编「刚刚发生的事」。网页聊天会直接显示她的主动问候。</div></div>
+      </div>
+    </section>
+
+    <!-- 6 语音 -->
+    <section class="card" id="s-voice">
+      <div class="card-h"><i class="dot">6</i><h2>语音</h2><span class="sub">语音消息与按键式语音对话</span></div>
+      <div class="card-b">
+        <div class="note tip"><span class="ic">i</span><div>语音支持两套后端：默认 <b>OpenAI 兼容音频接口</b>（复用大模型那行地址和 Key）；切到 <b>阿里云百炼 DashScope</b> 后走阿里原生 API，能用 paraformer-v2 / cosyvoice-v2 等中文更强的模型。<br><b>对话和语音可以是不同服务商</b>——比如对话用 DeepSeek、语音用阿里百炼，下方 Key 不依赖上方 Key。</div></div>
+        <div class="grid" style="margin-top:15px">
+          <div class="f"><label>语音后端 <code class="k">SPEECH_BACKEND</code></label>
+            <select data-env="SPEECH_BACKEND" id="speechBackend">
+              <option value="openai">OpenAI 兼容（默认）</option>
+              <option value="dashscope">阿里云百炼 DashScope</option>
+            </select>
+            <p class="hint">选 DashScope 时 ASR/TTS 走阿里原生 API；选 OpenAI 时复用上方 <code>LLM_API_KEY</code>。</p></div>
+          <div class="f" id="dashKeyWrap"><label>阿里百炼 Key <code class="k">DASHSCOPE_API_KEY</code> <span class="opt">(选 DashScope 时填)</span></label>
+            <input type="password" data-env="DASHSCOPE_API_KEY" placeholder="sk-... · 选 OpenAI 可留空">
+            <p class="hint">百炼控制台单独签发的 <code>sk-...</code>。语音走阿里时用；走 OpenAI 时留空。</p></div>
+        </div>
+        <div class="grid" style="margin-top:15px">
+          <div class="f"><label>语音转写模型 <code class="k">ASR_MODEL</code></label>
+            <input type="text" data-env="ASR_MODEL" placeholder="whisper-1 或 paraformer-realtime-v2">
+            <p class="hint">语音 → 文字。DashScope 填 <code>paraformer-realtime-v2</code>；OpenAI 填 <code>whisper-1</code>。留空则语音按钮变灰。</p></div>
+          <div class="f"><label>语音合成模型 <code class="k">TTS_MODEL</code></label>
+            <input type="text" data-env="TTS_MODEL" placeholder="tts-1 或 cosyvoice-v2">
+            <p class="hint">文字 → 语音。DashScope 填 <code>cosyvoice-v2</code>；OpenAI 填 <code>tts-1</code>。留空则只能看文字。</p></div>
+          <div class="f"><label>音色 <code class="k">TTS_VOICE</code></label>
+            <select data-env="TTS_VOICE">
+              <option value="alloy">alloy · 中性平衡</option>
+              <option value="nova" selected>nova · 明亮年轻</option>
+              <option value="shimmer">shimmer · 温柔轻柔</option>
+              <option value="fable">fable · 有叙述感</option>
+              <option value="echo">echo · 偏低沉</option>
+              <option value="onyx">onyx · 低沉厚实</option>
+              <option value="longxiaoyue">longxiaoyue · 阿里 CosyVoice</option>
+              <option value="longxi">longxi · 阿里 CosyVoice</option>
+              <option value="sambert-zhixiajia">zhixiajia · 阿里 Sambert 年轻女声</option>
+              <option value="sambert-zhitian">zhitian · 阿里 Sambert 中性女声</option>
+            </select>
+            <p class="hint">要「活泼元气」：OpenAI 选 <code>nova</code>；DashScope 选 <code>sambert-zhixiajia</code> 或 <code>longxiaoyue</code>。</p></div>
+        </div>
+        <div class="note warn" style="margin-top:15px"><span class="ic">!</span><div>网页里能做的是<b>按键式</b>语音对话：录音 → 转写 → 生成回复 → 合成播放。真正的双向实时通话（WebRTC 那种）以及接管微信/QQ 原生语音通话，本方案不做也做不到。</div></div>
+      </div>
+    </section>
+
+    <!-- 7 安全 -->
+    <section class="card" id="s-safe">
+      <div class="card-h"><i class="dot">7</i><h2>安全白名单</h2><span class="sub">上线前务必填</span></div>
+      <div class="card-b">
+        <div class="grid">
+          <div class="f full"><label>允许使用的会话标识 <code class="k">ALLOWLIST</code></label>
+            <input type="text" data-env="ALLOWLIST" placeholder="123456789,oP3kK5sRz-aBcDeFgHiJkLmNoPq">
+            <p class="hint">纯用户 ID，英文逗号或换行分隔，<b>不带 qq: / wechat: 前缀</b>。留空＝不限制，任何人都能用。<br>本地自己玩可以一直留空。</p></div>
+          <div class="f full"><label>数据库位置 <code class="k">DATABASE_PATH</code></label>
+            <p class="hint" style="margin:0;padding:9px 12px;background:#fafbfc;border:1px solid #e3e6ea;border-radius:9px">
+              当前为 <code id="dbMirror">data/pimate.db</code> —— 全部聊天记录都在里面。<br>
+              别放同步盘或公开目录；要改路径请回到第 0 节。</p></div>
+        </div>
+        <div class="note warn" style="margin-top:15px"><span class="ic">!</span><div>发布前逐条确认：<b>不提交 .env 与数据库</b>、<b>只监听 127.0.0.1</b>、<b>公网部署加 HTTPS 与鉴权</b>、<b>定期备份并清理聊天库</b>。</div></div>
+      </div>
+    </section>
+
+    <!-- 8 生成 -->
+    <section class="card gen" id="s-out">
+      <div class="card-h"><i class="dot">8</i><h2>生成配置</h2><span class="sub">一键产出文件</span></div>
+      <div class="card-b">
+        <div class="gen-row">
+          <button class="btn primary" id="btnGen">生成配置</button>
+          <button class="btn primary" id="btnSaveDir" title="用 File System Access 直接写进项目目录">💾 保存到项目目录</button>
+          <button class="btn ghost" id="btnDlEnv2">下载 .env</button>
+          <button class="btn ghost" id="btnDlYaml2">下载 persona.yaml</button>
+          <button class="btn ghost" id="btnCopySummary" title="复制决策点（不含 Key）">复制摘要给助手</button>
+        </div>
+        <p class="hint" style="margin:10px 2px 0">「保存到项目目录」会弹出文件夹选择框，把生成的 <code>.env</code> 和 <code>personas/&lt;id&gt;.yaml</code> 直接写进你的项目文件夹（建议选你的项目文件夹）。选不了就用「下载」两个文件，然后把它们放到项目根目录和 <code>personas/</code> 下。</p>
+        <ol class="steps">
+          <li>「保存到项目目录」或下载后放置：<code>.env</code> 放项目根目录，<code>personas/&lt;id&gt;.yaml</code> 放进项目根目录的 <code>personas/</code>（没有就新建一个）。</li>
+          <li>在项目目录执行 <code>.\setup.ps1</code> 装依赖，然后 <code>.\run.ps1</code> 启动。</li>
+          <li>浏览器打开 <code>http://127.0.0.1:8000</code>，先在网页里聊两句，确认人设对味。</li>
+          <li>再去接 QQ / 微信：QQ 官方机器人填好即连；微信公众号需要先把端口映射到公网 HTTPS。</li>
+        </ol>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <div class="sheet-h">
+      <div class="tabs">
+        <button data-tab="env" class="on">.env</button>
+        <button data-tab="yaml" id="tabYaml">persona.yaml</button>
+        <button data-tab="check">接入体检</button>
+      </div>
+      <button class="close" id="btnClose">&times;</button>
+    </div>
+    <div class="sheet-b">
+      <pre id="outEnv"></pre>
+      <pre id="outYaml" hidden></pre>
+      <div id="outCheck" class="ck" hidden></div>
+    </div>
+    <div class="sheet-f">
+      <button class="btn primary" id="btnCopy">复制当前内容</button>
+      <button class="btn ghost" id="btnDlEnv">下载 .env</button>
+      <button class="btn ghost" id="btnDlYaml">下载 persona.yaml</button>
+      <span class="sp"></span>
+      <span style="font-size:11.5px;color:#9ca3af" id="genTime"></span>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="importModal">
+  <div class="sheet" style="max-width:660px">
+    <div class="sheet-h"><b style="font-size:13.5px;flex:1">粘贴已有的 .env 内容</b><button class="close" id="btnCloseImp">&times;</button></div>
+    <div class="sheet-b"><textarea id="importArea" rows="14" style="width:100%;padding:12px;font-family:Consolas,monospace;font-size:12.5px;border:1px solid #dfe2e6;border-radius:9px;outline:none;resize:vertical" placeholder="LLM_BASE_URL=https://...&#10;LLM_API_KEY=sk-...&#10;LLM_MODEL=..."></textarea></div>
+    <div class="sheet-f"><button class="btn primary" id="btnDoImport">解析并回填</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var LS_KEY = "pimate-setup-draft-v1";
+
+  // ---------- 服务商预设 ----------
+  var PRESETS = [
+    { v:"openai",   t:"OpenAI",            url:"https://api.openai.com/v1",                          m:"gpt-4o-mini" },
+    { v:"deepseek", t:"DeepSeek 深度求索",   url:"https://api.deepseek.com/v1",                        m:"deepseek-chat" },
+    { v:"dashscope",t:"阿里云百炼 / 通义千问",url:"https://dashscope.aliyuncs.com/compatible-mode/v1",  m:"qwen-plus" },
+    { v:"zhipu",    t:"智谱 GLM",           url:"https://open.bigmodel.cn/api/paas/v4",               m:"glm-4-flash" },
+    { v:"moonshot", t:"月之暗面 Kimi",       url:"https://api.moonshot.cn/v1",                         m:"moonshot-v1-8k" },
+    { v:"ark",      t:"火山方舟 / 豆包",      url:"https://ark.cn-beijing.volces.com/api/v3",           m:"doubao-pro-32k" },
+    { v:"silicon",  t:"硅基流动 SiliconFlow", url:"https://api.siliconflow.cn/v1",                      m:"Qwen/Qwen2.5-7B-Instruct" },
+    { v:"ollama",   t:"本地 Ollama",         url:"http://127.0.0.1:11434/v1",                          m:"qwen2.5:7b" }
+  ];
+
+  // ---------- .env 输出顺序 ----------
+  var ENV_GROUPS = [
+    { t:"基础",            k:["APP_NAME","HOST","PORT","DATABASE_PATH"] },
+    { t:"大模型（OpenAI 兼容）", k:["LLM_BASE_URL","LLM_API_KEY","LLM_MODEL","LLM_TEMPERATURE","LLM_MAX_TOKENS","LLM_TIMEOUT_SECONDS","HISTORY_LIMIT","RATE_LIMIT_PER_MINUTE"] },
+    { t:"语音",            k:["SPEECH_BACKEND","DASHSCOPE_API_KEY","ASR_MODEL","TTS_MODEL","TTS_VOICE"] },
+    { t:"安全控制",        k:["ALLOWLIST"] },
+    { t:"QQ 官方机器人",    k:["QQ_ENABLED","QQ_APP_ID","QQ_CLIENT_SECRET","QQ_SANDBOX","QQ_INTENTS"] },
+    { t:"OneBot 11（QQ）", k:["ONEBOT_ENABLED","ONEBOT_WS_URL","ONEBOT_ACCESS_TOKEN"] },
+    { t:"微信公众号",       k:["WECHAT_TOKEN","WECHAT_REPLY_TIMEOUT_SECONDS"] },
+    { t:"微信网关",        k:["WECHAT_GATEWAY_ENABLED","WECHAT_GATEWAY_OUTBOUND_URL","WECHAT_GATEWAY_SECRET"] },
+    { t:"主动问候",        k:["PROACTIVE_ENABLED","PROACTIVE_INTERVAL_MINUTES","PROACTIVE_QUIET_START","PROACTIVE_QUIET_END"] },
+    { t:"人设文件",        k:["PERSONA_PATH"] }
+  ];
+
+  var PERSONA_KEYS = ["id","name","species","backstory","personality","relationship","max_sentences","reply_rules","boundaries"];
+
+  var $  = function(s,r){ return (r||document).querySelector(s); };
+  var $$ = function(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
+
+  // ---------- 工具 ----------
+  function toast(msg){
+    var el = $("#toast"); el.textContent = msg; el.classList.add("on");
+    clearTimeout(toast._t); toast._t = setTimeout(function(){ el.classList.remove("on"); }, 1900);
+  }
+
+  function download(name, text){
+    var blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 400);
+  }
+
+  function pad(n){ return n < 10 ? "0"+n : ""+n; }
+  function stamp(){
+    var d = new Date();
+    return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes());
+  }
+
+  // ---------- 采集 ----------
+  function collectEnv(){
+    var o = {};
+    $$("[data-env]").forEach(function(el){
+      var key = el.getAttribute("data-env");
+      if (el.type === "checkbox") o[key] = el.checked ? "true" : "false";
+      else o[key] = String(el.value == null ? "" : el.value).trim();
+    });
+    return o;
+  }
+
+  function collectPersona(){
+    var o = {};
+    $$("[data-persona]").forEach(function(el){
+      var k = el.getAttribute("data-persona");
+      var v = String(el.value == null ? "" : el.value);
+      if (k === "personality" || k === "reply_rules" || k === "boundaries"){
+        o[k] = v.split(/\r?\n/).map(function(s){ return s.trim(); }).filter(Boolean);
+      } else {
+        o[k] = v.trim();
+      }
+    });
+    return o;
+  }
+
+  // ---------- 生成 .env ----------
+  function buildEnv(){
+    var d = collectEnv();
+    var lines = [];
+    lines.push("# ============================================");
+    lines.push("# 电子女友 配置  ·  由配置向导生成");
+    lines.push("# 生成时间：" + stamp());
+    lines.push("# 放到项目根目录，改完重启服务生效");
+    lines.push("# ============================================");
+    lines.push("");
+    ENV_GROUPS.forEach(function(g){
+      lines.push("# ----- " + g.t + " -----");
+      g.k.forEach(function(key){
+        var v = d[key];
+        if (v === undefined) v = "";
+        if (/[\s#"']/.test(v)) v = '"' + v.replace(/"/g, '\\"') + '"';
+        lines.push(key + "=" + v);
+      });
+      lines.push("");
+    });
+    return lines.join("\n");
+  }
+
+  function yamlScalar(s){
+    s = String(s == null ? "" : s).trim();
+    if (s === "") return '""';
+    if (/[:#\[\]\{\}&*!|>'"%@`,\n]/.test(s) || /^\s|\s$/.test(s) || s.charAt(0) === "-"){
+      return JSON.stringify(s);
+    }
+    return s;
+  }
+
+  // ---------- 生成 persona.yaml ----------
+  function buildYaml(){
+    var p = collectPersona();
+    var L = [];
+    L.push("# " + (p.name || "角色") + " 人格定义");
+    L.push("# 由配置向导生成 · " + stamp());
+    L.push("id: " + yamlScalar(p.id || "pimate"));
+    L.push("name: " + yamlScalar(p.name));
+    L.push("species: " + yamlScalar(p.species));
+    L.push("backstory: " + yamlScalar(p.backstory));
+    L.push("personality:");
+    (p.personality.length ? p.personality : ["（未填写）"]).forEach(function(x){ L.push("  - " + yamlScalar(x)); });
+    L.push("relationship: " + yamlScalar(p.relationship));
+    L.push("style:");
+    L.push("  max_sentences: " + (parseInt(p.max_sentences,10) || 3));
+    L.push("  reply_rules:");
+    (p.reply_rules.length ? p.reply_rules : ["（未填写）"]).forEach(function(x){ L.push("    - " + yamlScalar(x)); });
+    L.push("boundaries:");
+    (p.boundaries.length ? p.boundaries : ["（未填写）"]).forEach(function(x){ L.push("  - " + yamlScalar(x)); });
+    L.push("");
+    return L.join("\n");
+  }
+
+  function yamlFileName(){
+    var id = (collectPersona().id || "pimate").replace(/[^\w\-]/g, "") || "pimate";
+    return id + ".yaml";
+  }
+
+  // ---------- 体检 ----------
+  function runCheck(){
+    var d = collectEnv(), p = collectPersona(), out = [];
+    function ok(m){ out.push({lv:"ok",   m:m}); }
+    function wn(m){ out.push({lv:"warn", m:m}); }
+    function er(m){ out.push({lv:"err",  m:m}); }
+
+    var filled = ["LLM_BASE_URL","LLM_API_KEY","LLM_MODEL"].filter(function(k){ return d[k]; }).length;
+    if (filled === 3) ok("大模型三项齐了，启动后就是真实对话。");
+    else if (filled === 0) wn("大模型三项都空着：能启动，但只会回本地演示内容。");
+    else er("大模型配置不完整（缺 " + (3-filled) + " 项）。三项必须同时填，否则会一直走降级回复。");
+    if (d.LLM_BASE_URL && /\/$/.test(d.LLM_BASE_URL)) wn("接口地址末尾多了斜杠，建议去掉。");
+    if (d.LLM_BASE_URL && !/^https?:\/\//i.test(d.LLM_BASE_URL)) er("接口地址不像合法 URL，必须以 http:// 或 https:// 开头。");
+
+    if (!p.name) er("角色名是空的，角色会没有名字可自称。");
+    else ok("角色名：" + p.name + "，配置文件为 personas/" + yamlFileName() + "。");
+    if (!p.personality.length) wn("性格特征为空，角色会退化成通用助手语气。");
+    if (!p.reply_rules.length) wn("回复规则为空，情绪优先策略不会生效。");
+    if (!p.boundaries.length) wn("底线为空。建议至少保留「对自伤、暴力、医疗急症建议联系当地紧急服务」。");
+
+    if (d.QQ_ENABLED === "true"){
+      if (d.QQ_APP_ID && d.QQ_CLIENT_SECRET) ok("QQ 官方机器人配置齐全，启动时会自动取 token 并连 WebSocket。");
+      else er("QQ 已启用，但 AppID 或 AppSecret 缺失。");
+      if (d.QQ_SANDBOX === "true") wn("当前是 QQ 沙箱环境，正式上线前记得关掉。");
+    }
+    if (d.ONEBOT_ENABLED === "true"){
+      if (/^wss?:\/\//i.test(d.ONEBOT_WS_URL)) ok("OneBot 11 已启用：" + d.ONEBOT_WS_URL);
+      else er("OneBot 已启用，但 WebSocket 地址不合法（应以 ws:// 或 wss:// 开头）。");
+    }
+    if (d.QQ_ENABLED !== "true" && d.ONEBOT_ENABLED !== "true") wn("QQ 两条路都没启用，QQ 侧收不到消息。");
+
+    if (d.WECHAT_TOKEN) ok("公众号回调 Token 已填。记得把公网 HTTPS 地址配到公众号后台。");
+    else wn("公众号 Token 空着，微信侧回调校验会失败。");
+    if (parseFloat(d.WECHAT_REPLY_TIMEOUT_SECONDS) >= 5) er("被动回复超时必须小于 5 秒，建议 4.5。");
+    if (d.WECHAT_GATEWAY_ENABLED === "true"){
+      if (/^https:\/\//i.test(d.WECHAT_GATEWAY_OUTBOUND_URL)) ok("微信网关已启用：" + d.WECHAT_GATEWAY_OUTBOUND_URL);
+      else er("微信网关已启用，但出站地址必须是 https:// 开头。");
+      if (!d.WECHAT_GATEWAY_SECRET) er("微信网关已启用，但密钥为空。");
+    }
+
+    if (d.PROACTIVE_ENABLED === "true"){
+      var iv = parseInt(d.PROACTIVE_INTERVAL_MINUTES,10);
+      if (iv < 30) wn("主动问候间隔小于 30 分钟，容易打扰。建议 120 分钟以上。");
+      else ok("主动问候已启用，每 " + iv + " 分钟最多一次。");
+      var qs = parseInt(d.PROACTIVE_QUIET_START,10), qe = parseInt(d.PROACTIVE_QUIET_END,10);
+      if (qs === qe) wn("免打扰开始与结束时间相同，等于没设置。");
+    }
+
+    if (d.SPEECH_BACKEND === "dashscope"){
+      if (!d.LLM_API_KEY && !d.DASHSCOPE_API_KEY) er("选了阿里百炼语音，但没有任何 Key 可用。");
+      else if (d.DASHSCOPE_API_KEY) ok("语音走阿里百炼原生 API（独立 Key）。");
+      else wn("语音走阿里百炼但没单独填 DASHSCOPE_API_KEY，会复用 LLM_API_KEY。");
+    }
+    if (d.TTS_MODEL && !d.ASR_MODEL) wn("填了语音合成但没填转写模型，只能听不能说。");
+    if (d.ASR_MODEL && !d.TTS_MODEL) wn("填了转写但没填合成模型，只能说你听不到回复。");
+    if (d.ASR_MODEL && d.TTS_MODEL) ok("语音收发都配好了。");
+
+    if (!d.ALLOWLIST) wn("白名单为空 —— 任何人都能用你的机器人，也会消耗你的额度。上线前务必填。");
+    else ok("白名单已生效：" + d.ALLOWLIST);
+
+    return out;
+  }
+
+  // ---------- 进度 ----------
+  function updateProgress(){
+    var els = $$("[data-env],[data-persona]");
+    var total = els.length, done = 0;
+    els.forEach(function(el){
+      if (el.type === "checkbox"){ done++; return; }
+      var v = String(el.value == null ? "" : el.value).trim();
+      if (v) done++;
+    });
+    $("#progText").textContent = done + " / " + total;
+    $("#progBar").style.width = Math.round(done * 100 / total) + "%";
+    var db = $('[data-env="DATABASE_PATH"]'), mir = $("#dbMirror");
+    if (db && mir) mir.textContent = db.value || "data/pimate.db";
+  }
+
+  // ---------- 草稿 ----------
+  function saveDraft(){
+    var o = { env:{}, persona:{} };
+    $$("[data-env]").forEach(function(el){
+      var k = el.getAttribute("data-env");
+      o.env[k] = el.type === "checkbox" ? el.checked : el.value;
+    });
+    $$("[data-persona]").forEach(function(el){
+      o.persona[el.getAttribute("data-persona")] = el.value;
+    });
+    try { localStorage.setItem(LS_KEY, JSON.stringify(o)); } catch(e){}
+  }
+
+  function loadDraft(){
+    var raw;
+    try { raw = localStorage.getItem(LS_KEY); } catch(e){ return false; }
+    if (!raw) return false;
+    var o;
+    try { o = JSON.parse(raw); } catch(e){ return false; }
+    if (o.env) $$("[data-env]").forEach(function(el){
+      var k = el.getAttribute("data-env");
+      if (!(k in o.env)) return;
+      if (el.type === "checkbox") el.checked = !!o.env[k];
+      else el.value = o.env[k];
+    });
+    if (o.persona) $$("[data-persona]").forEach(function(el){
+      var k = el.getAttribute("data-persona");
+      if (k in o.persona) el.value = o.persona[k];
+    });
+    return true;
+  }
+
+  // ---------- 弹层 ----------
+  function openModal(id){ $(id).classList.add("on"); }
+  function closeModal(id){ $(id).classList.remove("on"); }
+
+  var curTab = "env";
+  function renderTab(){
+    $$(".tabs button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-tab") === curTab); });
+    $("#outEnv").hidden   = curTab !== "env";
+    $("#outYaml").hidden  = curTab !== "yaml";
+    $("#outCheck").hidden = curTab !== "check";
+  }
+
+  function generate(){
+    $("#outEnv").textContent  = buildEnv();
+    $("#outYaml").textContent = buildYaml();
+    $("#tabYaml").textContent = "personas/" + yamlFileName();
+
+    var res = runCheck();
+    var box = $("#outCheck"); box.innerHTML = "";
+    res.forEach(function(r){
+      var d = document.createElement("div");
+      d.className = "ck-i " + r.lv;
+      var mark = r.lv === "ok" ? "OK" : (r.lv === "warn" ? "!" : "X");
+      d.innerHTML = '<span class="m">' + mark + '</span><span></span>';
+      d.lastChild.textContent = r.m;
+      box.appendChild(d);
+    });
+    $("#genTime").textContent = "生成于 " + stamp();
+  }
+
+  // ---------- 保存到项目目录（File System Access） ----------
+  $("#btnSaveDir").addEventListener("click", function(){
+    if (!window.showDirectoryPicker){
+      toast("此浏览器不支持直接保存，请用「下载」按钮并放到项目目录");
+      return;
+    }
+    (async function(){
+      try {
+        var dir = await window.showDirectoryPicker({ mode:"readwrite" });
+        var envFile = await dir.getFileHandle(".env", { create:true });
+        var w1 = await envFile.createWritable();
+        await w1.write(buildEnv()); await w1.close();
+        var sub = await dir.getDirectoryHandle("personas", { create:true });
+        var yfile = await sub.getFileHandle(yamlFileName(), { create:true });
+        var w2 = await yfile.createWritable();
+        await w2.write(buildYaml()); await w2.close();
+        toast("已写入 .env 与 personas/" + yamlFileName());
+      } catch(e){
+        if (e && e.name === "AbortError") { toast("已取消选择"); }
+        else toast("保存失败：" + (e && e.message ? e.message : e));
+      }
+    })();
+  });
+
+  // ---------- 预设 ----------
+  (function initPresets(){
+    var sel = $("#preset");
+    PRESETS.forEach(function(p){
+      var o = document.createElement("option");
+      o.value = p.v; o.textContent = p.t;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", function(){
+      var p = PRESETS.filter(function(x){ return x.v === sel.value; })[0];
+      if (!p) return;
+      $('[data-env="LLM_BASE_URL"]').value = p.url;
+      $('[data-env="LLM_MODEL"]').value = p.m;
+      saveDraft(); updateProgress();
+      toast("已填入 " + p.t + " 的地址与模型名");
+    });
+  })();
+
+  (function initSpeechBackend(){
+    var sel = $("#speechBackend"), wrap = $("#dashKeyWrap");
+    if (!sel || !wrap) return;
+    function sync(){
+      var isDS = sel.value === "dashscope";
+      wrap.style.opacity = isDS ? "1" : "0.55";
+      wrap.style.transition = "opacity 0.2s";
+      var lbl = wrap.querySelector("label");
+      if (lbl) {
+        var opt = lbl.querySelector(".opt");
+        if (opt) opt.textContent = isDS ? "（选 DashScope · 必填）" : "（选 DashScope 时填）";
+      }
+    }
+    sel.addEventListener("change", function(){ sync(); saveDraft(); updateProgress(); });
+    sync();
+  })();
+
+  // ---------- 事件 ----------
+  $$("input,textarea,select").forEach(function(el){
+    el.addEventListener("input",  function(){ saveDraft(); updateProgress(); });
+    el.addEventListener("change", function(){ saveDraft(); updateProgress(); });
+  });
+
+  $$(".tabs button").forEach(function(b){
+    b.addEventListener("click", function(){ curTab = b.getAttribute("data-tab"); renderTab(); });
+  });
+
+  $("#btnGen").addEventListener("click", function(){ generate(); curTab = "env"; renderTab(); openModal("#modal"); });
+  $("#btnClose").addEventListener("click", function(){ closeModal("#modal"); });
+  $("#btnDlEnv2").addEventListener("click", function(){ download(".env", buildEnv()); toast("已下载 .env"); });
+  $("#btnDlYaml2").addEventListener("click", function(){ download(yamlFileName(), buildYaml()); toast("已下载 " + yamlFileName()); });
+
+  $("#btnCopySummary").addEventListener("click", function(){
+    var SECRET = /KEY|SECRET|TOKEN|PASSWORD/i;
+    var lines = ["# 电子女友 setup.html 配置摘要（" + new Date().toLocaleString("zh-CN") + "）", ""];
+    var prevSec = "";
+    $$("[data-env]").forEach(function(el){
+      var k = el.getAttribute("data-env");
+      var v = el.value || "";
+      var sec = el.closest(".card") ? el.closest(".card").querySelector(".card-h h2").textContent : "";
+      if (sec !== prevSec){ lines.push("## " + sec); prevSec = sec; }
+      var shown = SECRET.test(k) && v ? "***已填(" + v.length + "字符)***" : (v || "—空—");
+      lines.push("  " + k + " = " + shown);
+    });
+    lines.push("", "## 人设");
+    $$("[data-persona]").forEach(function(el){
+      var k = el.getAttribute("data-persona");
+      var v = el.value || "";
+      var shown = v.length > 80 ? v.slice(0, 80) + "…" : v;
+      lines.push("  " + k + " = " + (shown || "—空—"));
+    });
+    var text = lines.join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast("已复制 " + text.length + " 字符到剪贴板，粘给我即可"); });
+    } else {
+      var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); toast("已复制（兼容模式）"); } catch(e){ toast("复制失败，请手动选中"); }
+      document.body.removeChild(ta);
+    }
+  });
+  $("#btnDlEnv").addEventListener("click", function(){ download(".env", buildEnv()); toast("已下载 .env"); });
+  $("#btnDlYaml").addEventListener("click", function(){ download(yamlFileName(), buildYaml()); toast("已下载 " + yamlFileName()); });
+
+  $("#btnCopy").addEventListener("click", function(){
+    var text = curTab === "yaml" ? buildYaml() : buildEnv();
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast("已复制到剪贴板"); }, function(){ toast("复制失败，请手动选中"); });
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); toast("已复制到剪贴板"); } catch(e){ toast("复制失败，请手动选中"); }
+      document.body.removeChild(ta);
+    }
+  });
+
+  // 载入示例
+  $("#btnSample").addEventListener("click", function(){
+    var set = function(k, v){
+      var el = $('[data-env="'+k+'"]');
+      if (!el) return;
+      if (el.type === "checkbox") el.checked = !!v; else el.value = v;
+    };
+    set("LLM_BASE_URL", "https://api.deepseek.com/v1");
+    set("LLM_MODEL", "deepseek-chat");
+    set("LLM_TEMPERATURE", "0.85");
+    set("LLM_MAX_TOKENS", "400");
+    set("HISTORY_LIMIT", "20");
+    set("PROACTIVE_ENABLED", true);
+    set("PROACTIVE_INTERVAL_MINUTES", "150");
+    set("PROACTIVE_QUIET_START", "23");
+    set("PROACTIVE_QUIET_END", "8");
+    set("PERSONA_PATH", "personas/youzi.yaml");
+    set("TTS_VOICE", "nova");
+
+    var pf = $('[data-persona="personality"]');
+    if (pf) pf.value = [
+      "活泼元气，语气轻快有精神，但不咋咋呼呼",
+      "情绪感受优先，先接住情绪再谈别的",
+      "说话自然、短句、贴近微信聊天语感",
+      "会主动分享自己的小情绪和小发现",
+      "不控制、不威胁、不诱导依赖"
+    ].join("\n");
+
+    saveDraft(); updateProgress();
+    toast("示例配置已载入，记得把 API Key 换成你自己的");
+  });
+
+  // 清空
+  $("#btnClear").addEventListener("click", function(){
+    if (!confirm("确定要清空所有已填内容吗？此操作不可撤销。")) return;
+    try { localStorage.removeItem(LS_KEY); } catch(e){}
+    location.reload();
+  });
+
+  // 导入
+  $("#btnImport").addEventListener("click", function(){ openModal("#importModal"); });
+  $("#btnCloseImp").addEventListener("click", function(){ closeModal("#importModal"); });
+  $("#btnDoImport").addEventListener("click", function(){
+    var text = $("#importArea").value || "";
+    if (!text.trim()){ toast("先粘贴点内容"); return; }
+    var n = 0;
+    text.split(/\r?\n/).forEach(function(line){
+      line = line.trim();
+      if (!line || line.charAt(0) === "#" || line.indexOf("=") < 0) return;
+      var i = line.indexOf("=");
+      var k = line.slice(0, i).trim();
+      var v = line.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+      var el = $('[data-env="'+k+'"]');
+      if (!el) return;
+      if (el.type === "checkbox") el.checked = (v.toLowerCase() === "true" || v === "1" || v.toLowerCase() === "on");
+      else el.value = v;
+      n++;
+    });
+    saveDraft(); updateProgress();
+    closeModal("#importModal");
+    toast(n ? ("已回填 " + n + " 项") : "没认出任何可识别的配置项");
+  });
+
+  // 侧栏高亮
+  (function initNav(){
+    var links = $$("#nav a");
+    var secs = links.map(function(a){ return $(a.getAttribute("href")); });
+    function sync(){
+      var y = window.scrollY + 130, idx = 0;
+      secs.forEach(function(s, i){ if (s && s.offsetTop <= y) idx = i; });
+      links.forEach(function(a, i){ a.classList.toggle("on", i === idx); });
+    }
+    window.addEventListener("scroll", sync, {passive:true});
+    links.forEach(function(a){
+      a.addEventListener("click", function(e){
+        e.preventDefault();
+        var t = $(a.getAttribute("href"));
+        if (t) window.scrollTo({ top: t.offsetTop - 78, behavior:"smooth" });
+      });
+    });
+    sync();
+  })();
+
+  ["#modal","#importModal"].forEach(function(id){
+    $(id).addEventListener("click", function(e){ if (e.target === $(id)) closeModal(id); });
+  });
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape"){ closeModal("#modal"); closeModal("#importModal"); }
+  });
+
+  // ---------- 启动 ----------
+  if (loadDraft()) toast("已恢复上次填写的草稿");
+  updateProgress();
+  renderTab();
+})();
+</script>
+</body>
+</html>
