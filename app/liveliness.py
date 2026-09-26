@@ -59,9 +59,14 @@ def detect_mood(user_text, recent_texts=None):
         return "vent"
     if _has(text, POSITIVE):
         return "pos"
-    # 连续多轮情绪词（上一条在倾诉，这条延续）→ 仍按 vent 处理
+    # 连续多轮情绪词（上一条在倾诉，这条延续）→ 仍按 vent 处理。
+    # 但本条若明显是新话题（命中闲聊词/追问词/有实质内容），不继承历史情绪——
+    # 防止"旧情绪绑架新消息"（对方刚难受完，转头说面试，不能被当继续倾诉）。
     if _has(ctx, VENTING) and recent_texts:
-        return "vent"
+        new_topic = (_has(text, CASUAL_WORDS) or _has(text, FOLLOWUP_KEYWORDS)
+                     or len(text) > 20 or any(c in text for c in "？?，。"))
+        if not new_topic:
+            return "vent"
     # 短日常闲聊：无情绪词 + 命中闲聊词 + 长度短
     if len(text) <= 40 and _has(text, CASUAL_WORDS):
         return "casual"
@@ -83,8 +88,10 @@ def dynamic_instruction(mood):
                 "也别长篇大论，简短接住就好。）")
     if mood == "casual":
         return ("（对方只是在轻松闲聊、分享日常，语气松弛自然就好，像朋友唠家常，"
-                "别句句夸、句句哄、句句深情，也不要用力过猛。）")
-    return "（自然回应就好，像真人发微信，别太正式也别太肉麻。）"
+                "别句句夸、句句哄、句句深情，也不要用力过猛；"
+                "不要用'好的、嗯嗯、没问题、收到'这类敷衍短句开场或单独成句。）")
+    return ("（自然回应就好，像真人发微信，别太正式也别太肉麻；"
+            "不要用'好的、嗯嗯、没问题、收到'这类敷衍短句开场或单独成句。）")
 
 
 def length_instruction(user_text, mood):
@@ -152,6 +159,55 @@ def maybe_extend_hint(mood):
     return None
 
 
+# ---- 追问补强（小凌式：主动获取感受，不让对话断在"答完就停"） ----
+# 对方聊到自己（生活/近况/兴趣）时，鼓励自然追问一个具体细节；
+# 聊天还很初期时，也允许自然地了解对方，形成"她在认真了解你"的陪伴感。
+FOLLOWUP_KEYWORDS = [
+    "上班", "加班", "下班", "开会", "项目", "同事", "领导", "辞职", "面试", "offer",
+    "考试", "上课", "论文", "考研", "毕业", "作业", "开学", "老师", "同学", "室友",
+    "猫", "狗", "养了", "宠物", "感冒", "发烧", "咳嗽", "胃疼", "头疼", "失眠", "体检",
+    "搬家", "租房", "房子", "健身", "跑步", "打球", "游戏", "追剧", "电影", "音乐",
+    "旅行", "做饭", "外卖", "奶茶", "火锅", "逛街", "买了", "周末", "生日", "纪念日",
+    "我妈", "我爸", "家里", "家人",
+]
+
+
+def maybe_followup_hint(user_text, mood, history_len=0):
+    """对方聊到自己时，鼓励自然追问一个具体细节，让对话有来有回。
+    vent/neg 不追问（先稳稳接住情绪）；追问要具体、好奇，不要审问式连环问。"""
+    if mood in ("vent", "neg"):
+        return None
+    t = (user_text or "").strip()
+    hit = any(w in t for w in FOLLOWUP_KEYWORDS) or (history_len <= 2 and len(t) >= 6)
+    if hit and random.random() < 0.7:
+        return ("（对方刚才提到了自己的生活/近况，你自然地追问一个具体的小细节——"
+                "带着好奇和关心，像朋友聊天那样随口问；不要审问式连环问，问一个就好，"
+                "问完自然接住对方的话。）")
+    return None
+
+
+# ---- 自主表达层：柚子有自己的生活与想法，不总是围着对方转 ----
+# 解决"太执着于上文、缺乏主观判断"：按概率给她注入"说点自己此刻想说的"空间。
+SELF_VOICE_MILD = ("（这条可以有一点你自己的节奏：不完全只回应对方这句话——"
+                   "自然地带一点你此刻的状态（你在做什么/刚才想到的/对这个话题你自己真实的感受），"
+                   "或者带点小俏皮地接一句；像真人聊天那样有来有回，别答完就停。"
+                   "两三句内能收回来就行，别跑题太远。）")
+SELF_VOICE_STRONG = ("（这次多展现一点你自己：像真人一样，说说你此刻在做什么、"
+                     "刚才自己想到的事、或者你对他这句话的真实反应（包括小声吐槽、自己偷乐、"
+                     "有点小情绪）；可以不完全接他的话，有自己的节奏和想说的话。"
+                     "这是你的人生，你有自己此刻想表达的东西。）")
+
+
+def maybe_self_voice_hint(mood, affection=50):
+    """自主表达提示：概率随好感度上升；对方倾诉/带情绪时压低（先接住情绪再自主）。"""
+    p_base = {"casual": 0.38, "neu": 0.32, "pos": 0.32, "vent": 0.12, "neg": 0.10}[mood]
+    boost = (min(max(affection or 50, 0), 100) - 50) / 100.0 * 0.18
+    p = max(0.05, min(0.6, p_base + boost))
+    if random.random() < p:
+        return SELF_VOICE_STRONG if random.random() < 0.35 else SELF_VOICE_MILD
+    return None
+
+
 def maybe_burst_hint(mood, burst_prob_map=None):
     """按概率返回连发提示（拼到 user 消息后），None 表示这次单条。
 
@@ -198,10 +254,22 @@ def maybe_add_kaomoji(reply, mood, prob=0.40):
 
 
 def post_process(reply, mood, kaomoji_prob=0.40):
-    """整体后处理：清理空白/空行、按概率补颜文字。返回最终文本。"""
+    """整体后处理：清理空白/空行、修剪敷衍短句（小凌式"禁敷衍应答"）、按概率补颜文字。
+
+    对方还没说完话/问句还没接住时，不允许用"好的/嗯嗯/没问题"这类空话开场；
+    这里把回复开头/单独成句的敷衍短句直接去掉，防止模型偷懒。
+    """
     if not reply:
         return reply
+    import re as _re
+    _FILLER = _re.compile(r"^(好的|好呀|好的呀|好的呢|嗯{1,4}|嗯嗯|嗯呢|嗯嗯嗯|没问题|"
+                          r"收到|知道了|晓得|行吧|好嘛|OK|Ok|ok|okay|欧克|欧了|"
+                          r"哦|噢|了解|可以|行|是呀|是呢)$")
     lines = [ln.strip() for ln in str(reply).split("\n")]
     lines = [ln for ln in lines if ln]
+    while lines and _FILLER.match(lines[0]):
+        lines.pop(0)
+    if not lines:
+        return reply
     text = "\n".join(lines)
     return maybe_add_kaomoji(text, mood, prob=kaomoji_prob)
