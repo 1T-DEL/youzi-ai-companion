@@ -6,6 +6,7 @@ Web 聊天 + 长期记忆 + 主动问候 + 语音 + 微信公众号/QQ(OneBot) �
 import os
 import sys
 import time
+import random
 import threading
 from collections import deque
 
@@ -175,6 +176,17 @@ def maybe_archive_summary():
 
 # ---------- 核心回复生成 ----------
 def generate_reply(user_text, sender_id="web"):
+    # 对方来消息了：重置主动模块的沉默计时（避免"你不说话就断"）
+    try:
+        proactive.note_user_message()
+    except Exception:
+        pass
+    # 用户的情绪会推动她的情绪转向（情绪惯性被打破 → 更真实的陪伴感）
+    try:
+        lifesim.note_user_mood(liveliness.detect_mood(user_text))
+        lifesim.growth_tick()  # 成长证据闸门：跨天情绪证据 → 性格微调（保守上限）
+    except Exception:
+        pass
     # 视频分享链接解析：识别并抓标题/作者/时长，让"柚子"看懂你分享的视频
     try:
         import app.video as video
@@ -199,7 +211,8 @@ def generate_reply(user_text, sender_id="web"):
     system = build_system_prompt(persona, facts, state=relationship.state(memory),
                                  profile=memory.all_profile(),
                                  summary=_sum["summary"] if _sum else None,
-                                 events=memory.list_events(6))
+                                 events=memory.list_events(6),
+                                 lifesim=lifesim)
     history = memory.recent(HISTORY_LIMIT)
     messages = [{"role": "system", "content": system}]
     recent_user_texts = [c for r, c in history if r == "user"][-4:]
@@ -220,9 +233,28 @@ def generate_reply(user_text, sender_id="web"):
     extend = liveliness.maybe_extend_hint(mood)
     if extend:
         prompt_text = extend + "\n" + prompt_text
+    # 自主表达层：让她有自己的节奏，不完全围着对方的话转（概率随好感度上升）
+    try:
+        _aff = relationship.state(memory).get("affection") or 50
+    except Exception:
+        _aff = 50
+    selfv = liveliness.maybe_self_voice_hint(mood, affection=_aff)
+    if selfv:
+        prompt_text = selfv + "\n" + prompt_text
     burst = liveliness.maybe_burst_hint(mood)
     if burst:
         prompt_text = prompt_text + "\n" + burst
+    # ---- 触景生情：线索触发检索 → 自然追问（小凌式：记忆自己浮上来） ----
+    try:
+        cues = memory.cue_retrieval(user_text, top=2)
+        if cues:
+            cue_lines = ["你心里突然浮起一点旧事——不要生硬播报，自然地提一句或追问一句，语气像想起往事："]
+            for cu in cues:
+                cue_lines.append("· 「%s」：%s（你%s，别说得太确定）" % (
+                    cu["key"], cu["value"], cu["impression"]))
+            prompt_text = "\n".join(cue_lines) + "\n\n" + prompt_text
+    except Exception:
+        pass
     messages.append({"role": "user", "content": prompt_text})
     reply = llm.chat(messages)
     reply = liveliness.post_process(reply, mood,
@@ -264,13 +296,18 @@ def dispatch_proactive(text):
                 pass
 
 
+from app import lifesim as _lifesim_mod
+lifesim = _lifesim_mod.build(memory=memory, log=lambda *a: print("[LifeSim]", *a))
+
 proactive = Proactive(CFG_OBJ, llm,
                       lambda facts=None: build_system_prompt(
                           persona, facts, state=relationship.state(memory),
                           profile=memory.all_profile(),
                           summary=(memory.latest_summary() or {}).get("summary"),
-                          events=memory.list_events(6)),
-                      memory, dispatch_proactive, state_file=path_for("data/proactive_last.json"))
+                          events=memory.list_events(6),
+                          lifesim=lifesim),
+                      memory, dispatch_proactive, state_file=path_for("data/proactive_last.json"),
+                      lifesim=lifesim)
 
 
 # ---------- 网页 ----------
@@ -289,6 +326,67 @@ def health():
         "voice": voice.enabled,
         "facts": memory.count_facts(),
     })
+
+
+# ---------- 数字生命调试 API（控制端用） ----------
+@app.route("/api/lifesim")
+def api_lifesim():
+    """返回柚子当前的三层状态（此刻/今天/心情/身体/余韵/成长）。"""
+    try:
+        st = lifesim.state_block()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+    return jsonify({
+        "ok": True,
+        "mood": lifesim.mood(),
+        "body": lifesim._body,
+        "story": lifesim.today_story(),
+        "echo": lifesim._echo if time.time() < lifesim._echo_until else "",
+        "growth": lifesim.growth_state(),
+        "block": st,
+    })
+
+
+@app.route("/api/lifesim/mood", methods=["POST"])
+def api_lifesim_mood():
+    """手动设置心情（调试用）。"""
+    d = request.get_json(silent=True) or {}
+    mood = str(d.get("mood") or "")
+    if mood not in _lifesim_mod.MOODS:
+        return jsonify({"ok": False, "error": "心情必须是：" + "、".join(_lifesim_mod.MOODS)})
+    lifesim._mood = mood
+    lifesim._mood_strength = int(d.get("strength") or 2)
+    lifesim._mood_until = time.time() + random.uniform(30, 70) * 60
+    return jsonify({"ok": True, "mood": lifesim.mood()})
+
+
+@app.route("/api/lifesim/body", methods=["POST"])
+def api_lifesim_body():
+    """手动设置身体状态（调试用）。"""
+    d = request.get_json(silent=True) or {}
+    body = str(d.get("body") or "").strip()
+    if not body:
+        return jsonify({"ok": False, "error": "body 不能为空"})
+    lifesim._body = body
+    return jsonify({"ok": True, "body": lifesim._body})
+
+
+@app.route("/api/lifesim/story", methods=["POST"])
+def api_lifesim_story():
+    """重新生成今天的轨迹（调试用）。"""
+    lifesim._story_date = None
+    lifesim._tick()
+    return jsonify({"ok": True, "story": lifesim.today_story()})
+
+
+@app.route("/api/lifesim/echo", methods=["POST"])
+def api_lifesim_echo():
+    """注入一条情绪余韵（模拟"刚才发生的事"，调试用）。"""
+    d = request.get_json(silent=True) or {}
+    echo = str(d.get("echo") or "").strip()
+    lifesim._echo = echo
+    lifesim._echo_until = time.time() + 2 * 3600
+    return jsonify({"ok": True, "echo": lifesim._echo})
 
 
 @app.route("/api/chat", methods=["POST"])
@@ -438,6 +536,22 @@ def api_tts():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/voice/segments", methods=["POST"])
+def api_voice_segments():
+    """意群分段（小凌式）：返回回复文本按语义意群切分后的分段列表，
+    前端可"播第一段的同时预取下一段"，避免整句死板。"""
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"ok": False, "error": "缺少文本"}), 400
+    try:
+        segs = voice.split_semantic_units(text)
+        return jsonify({"ok": True, "segments": segs})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ---------- 微信公众号 ----------
 # ---------- 音色试听 ----------
 @app.route("/api/tts_preview", methods=["GET"])
 def api_tts_preview():
@@ -463,6 +577,7 @@ def tts_preview_page():
                     encoding="utf-8").read()
     except Exception:
         return "tts_preview.html 不存在"
+    return """<!doctype html><html lang="zh"><head><meta charset="utf-8"><title>柚子 · 音色试听</title><style>body{font-family:system-ui;max-width:520px;margin:30px auto;padding:0 16px;background:#faf7f4;color:#333}h1{font-size:20px}p{color:#888}textarea{width:100%;height:56px;border:1px solid #ddd;border-radius:8px;padding:8px;box-sizing:border-box}.v{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin:8px 0;background:#fff;border:1px solid #eee;border-radius:10px}button{border:none;background:#ff6b81;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer}button:disabled{background:#ccc}.playing{background:#ffe9ee}</style></head><body><h1> 柚子 · 音色试听</h1><p>点每个音色的「试听」，挨个听，挑一个喜欢的告诉我名字。</p><textarea id="t">你好呀，我是柚子。今天有没有好好吃饭？我想你啦～</textarea><div id="list"></div><script>const voices=["Cherry","Serena","Sunny","Bella","Mia","Ethan"];const hints={Cherry:"甜美元气",Serena:"温柔知性",Sunny:"阳光活泼",Bella:"软萌可爱",Mia:"少女清脆",Ethan:"中低/男声"};const list=document.getElementById("list");let cur=null;voices.forEach(v=>{const d=document.createElement("div");d.className="v";d.innerHTML='<div><b>'+v+'</b><span style="color:#aaa;font-size:12px;margin-left:8px">'+(hints[v]||'')+'</span></div><button data-v="'+v+'">试听</button>';const b=d.querySelector("button");b.onclick=async()=>{b.disabled=true;b.textContent="生成中…";const text=document.getElementById("t").value||"你好呀";try{const r=await fetch("/api/tts_preview?voice="+v+"&text="+encodeURIComponent(text));if(!r.ok){alert(v+" 试听失败");b.disabled=false;b.textContent="试听";return;}const blob=await r.blob();const a=new Audio(URL.createObjectURL(blob));if(cur){cur.pause();}cur=a;a.play();list.querySelectorAll(".v").forEach(x=>x.classList.remove("playing"));d.classList.add("playing");b.disabled=false;b.textContent="试听";}catch(e){alert(e);b.disabled=false;b.textContent="试听";}};list.appendChild(d);});</script></body></html>"""
 
 
 @app.route("/wechat/callback", methods=["GET", "POST"])
