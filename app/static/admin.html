@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电子女友 · 管理后台</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f6f7fb; color: #1f2329; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
+  header.top { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  header.top .dot { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,#ff8fb1,#ff5c8a); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:600; font-size:16px; }
+  header.top h1 { font-size: 20px; }
+  header.top .sub { color: #8a9099; font-size: 13px; margin-top: 2px; }
+  .card { background: #fff; border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(31,35,41,.06); }
+  .card h2 { font-size: 16px; margin-bottom: 14px; display:flex; align-items:center; gap:8px; }
+  .card h2 .tag { font-size: 12px; color:#8a9099; font-weight:400; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .f { display: flex; flex-direction: column; gap: 6px; }
+  .f.full { grid-column: 1 / -1; }
+  .f label { font-size: 13px; color: #4e545c; }
+  .f label .k { color:#9aa0a8; font-family: ui-monospace,Consolas,monospace; font-size: 12px; }
+  input[type=text], input[type=number], textarea { border: 1px solid #e3e6eb; border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: inherit; outline: none; transition: border .15s; background:#fafbfc; }
+  input:focus, textarea:focus { border-color: #ff5c8a; background: #fff; }
+  textarea { resize: vertical; line-height: 1.6; }
+  .hint { font-size: 12px; color: #9aa0a8; margin-top: 4px; }
+  .btn { border: 0; border-radius: 10px; padding: 10px 22px; font-size: 14px; cursor: pointer; transition: all .15s; }
+  .btn.pri { background: linear-gradient(135deg,#ff8fb1,#ff5c8a); color: #fff; }
+  .btn.pri:hover { filter: brightness(1.06); }
+  .btn.ghost { background: #f1f2f5; color: #4e545c; }
+  .btn.ghost:hover { background: #e6e8ed; }
+  .row { display:flex; align-items:center; gap: 12px; }
+  .toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); background: #2f3439; color:#fff; padding: 10px 18px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 99; }
+  .toast.show { opacity: 1; }
+
+  /* 关系状态 */
+  .aff-wrap { display:flex; align-items:center; gap: 14px; margin-bottom: 6px; }
+  .aff-bar { flex: 1; height: 14px; border-radius: 8px; background: #f0f1f5; overflow: hidden; position: relative; }
+  .aff-fill { height: 100%; width: 0%; border-radius: 8px; background: linear-gradient(90deg,#ffb3c7,#ff5c8a); transition: width .5s; }
+  .aff-num { font-size: 26px; font-weight: 700; color: #ff5c8a; min-width: 70px; text-align: right; }
+  .aff-lv { font-size: 13px; color: #ff5c8a; background: #ffeef2; padding: 3px 10px; border-radius: 20px; }
+  .stat-line { font-size: 13px; color: #8a9099; margin-top: 8px; }
+  .trait { margin-bottom: 14px; }
+  .trait .tt { display:flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .trait .tt b { color:#4e545c; }
+  .trait .tt span { color:#ff5c8a; font-weight:600; }
+  .trait .desc { font-size: 12px; color:#9aa0a8; margin-bottom: 4px; }
+  input[type=range] { width: 100%; accent-color: #ff5c8a; }
+
+  /* 记忆库 */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f0f1f5; vertical-align: middle; }
+  th { color: #8a9099; font-weight: 500; font-size: 12px; }
+  td .mem { color: #4e545c; }
+  .str { display:inline-block; min-width: 44px; text-align:center; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+  .str.hi { background:#e8f7ee; color:#2e9e5b; }
+  .str.mid { background:#fff4e0; color:#c07a16; }
+  .str.lo { background:#f3f4f6; color:#9aa0a8; }
+  .del { border:0; background:#feecec; color:#e5484d; font-size:12px; border-radius: 8px; padding: 4px 10px; cursor:pointer; }
+  .del:hover { background:#fcdada; }
+  .empty { color:#9aa0a8; text-align:center; padding: 20px; font-size: 13px; }
+  .note { background:#f6f7fb; border-radius:10px; padding: 12px 14px; font-size: 12px; color:#6a7078; line-height:1.7; margin-top: 12px; }
+
+  /* v3：成长曲线 / 时间线 / 画像 / 摘要 */
+  .chart-box { background:#fafbfc; border-radius:10px; padding:12px 12px 6px; margin-bottom:14px; }
+  .chart-box svg { width:100%; height:150px; display:block; }
+  .chart-legend { font-size:12px; color:#9aa0a8; margin:2px 0 10px; }
+  .evt { display:flex; gap:10px; padding:8px 0; border-bottom:1px dashed #f0f1f5; font-size:13px; }
+  .evt:last-child { border-bottom:0; }
+  .evt .dt { color:#9aa0a8; font-size:12px; min-width:88px; flex-shrink:0; padding-top:1px; }
+  .evt .ic { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; }
+  .evt .tx { color:#4e545c; line-height:1.5; }
+  .chip { display:inline-block; background:#f6f7fb; border:1px solid #eee; border-radius:8px; padding:3px 9px; font-size:12px; color:#4e545c; margin:0 6px 6px 0; }
+  .chip b { color:#ff5c8a; font-weight:600; }
+  .sub-block { border-top:1px dashed #eef0f3; margin-top:14px; padding-top:12px; }
+  .sub-block h3 { font-size:13px; color:#4e545c; margin-bottom:10px; font-weight:600; }
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="dot">柚</div>
+    <div>
+      <h1>电子女友 · 管理后台</h1>
+      <div class="sub">人物微调 · 关系状态 · 记忆库 —— 改完立即生效，无需重启</div>
+    </div>
+  </header>
+
+  <div class="card">
+    <h2>① 人物设定 <span class="tag">保存后立即生效</span></h2>
+    <div class="grid">
+      <div class="f"><label>名字 <code class="k">name</code></label><input type="text" id="p_name"></div>
+      <div class="f"><label>类型 <code class="k">species</code></label><input type="text" id="p_species"></div>
+      <div class="f full"><label>背景故事 <code class="k">backstory</code></label><textarea id="p_backstory" rows="3"></textarea></div>
+      <div class="f full"><label>性格特征 <code class="k">personality</code> <span style="font-weight:400;color:#9ca3af">每行一条</span></label><textarea id="p_personality" rows="6"></textarea></div>
+      <div class="f full"><label>关系定位 <code class="k">relationship</code></label><input type="text" id="p_relationship"></div>
+      <div class="f"><label>单次最多几句 <code class="k">style.max_sentences</code></label><input type="number" id="p_max" min="1" max="10"></div>
+      <div class="f full"><label>回复规则 <code class="k">style.reply_rules</code> <span style="font-weight:400;color:#9ca3af">每行一条</span></label><textarea id="p_rules" rows="6"></textarea></div>
+      <div class="f full"><label>底线 <code class="k">boundaries</code> <span style="font-weight:400;color:#9ca3af">每行一条</span></label><textarea id="p_boundaries" rows="3"></textarea></div>
+    </div>
+    <div class="row" style="margin-top:16px; justify-content:flex-end;">
+      <button class="btn ghost" onclick="loadPersona()">恢复</button>
+      <button class="btn pri" onclick="savePersona()">保存人设</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>② 关系状态 <span class="tag">每次聊天自动变化，也可手动调整</span></h2>
+    <div class="aff-wrap">
+      <div class="aff-bar"><div class="aff-fill" id="aff_fill"></div></div>
+      <div class="aff-num" id="aff_num">–</div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span class="aff-lv" id="aff_lv">–</span>
+      <span class="stat-line" id="aff_stat"></span>
+    </div>
+    <div style="margin-top:18px;">
+      <div class="trait" id="traits"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>③ 成长曲线与关系历程 <span class="tag">好感度每聊一条自动记录</span></h2>
+    <div class="chart-box">
+      <svg id="aff_chart"></svg>
+      <div class="chart-legend">好感度成长曲线（最近 120 条记录 · 0~100）</div>
+    </div>
+    <div class="chart-box">
+      <svg id="decay_chart"></svg>
+      <div class="chart-legend">记忆遗忘曲线示意（横轴为天数，纵轴为剩余记忆强度 %）</div>
+    </div>
+    <div id="events_box"></div>
+  </div>
+
+  <div class="card">
+    <h2>主动问候 <span class="tag">平时每120分钟自动发一条，也可现在手动触发</span></h2>
+    <div class="row">
+      <button class="btn pri" onclick="triggerProactive()">立即发一条问候</button>
+      <span class="stat-line" id="pro_res"></span>
+    </div>
+    <div class="hint" style="margin-top:10px;">主动问候会发给最近跟你聊过的人（QQ 官方号 / OneBot 备用号），消息带时段感知，偶尔连发/带颜文字。</div>
+  </div>
+
+  <div class="card">
+    <h2>④ 记忆库 <span class="tag" id="mem_note">按遗忘曲线衰减</span></h2>
+    <div class="sub-block" id="profile_block" style="display:none;">
+      <h3>📋 关于你的画像（长期档案）</h3>
+      <div id="profile_chips"></div>
+    </div>
+    <div class="sub-block" id="summary_block" style="display:none;">
+      <h3>🗂️ 更早的对话摘要（自动归档）</h3>
+      <div id="summary_txt" class="note" style="margin-top:0; background:#fff8f6; color:#6a7078;"></div>
+    </div>
+    <table>
+      <thead><tr><th style="width:38%">记得的事</th><th style="width:14%">记忆强度</th><th style="width:12%">提及次数</th><th></th></tr></thead>
+      <tbody id="facts_body"></tbody>
+    </table>
+    <div class="empty" id="facts_empty" style="display:none;">还没有长期记忆 —— 聊到「生病、加班、吃饭、心情」这类话题时 ta 会记下来</div>
+    <div class="note" id="mem_note2"></div>
+  </div>
+
+  <div class="row" style="justify-content:space-between;">
+    <a href="/" style="font-size:13px; color:#ff5c8a; text-decoration:none;">← 返回聊天页</a>
+    <button class="btn ghost" onclick="if(confirm('清空全部记忆、好感度与性格状态？不可恢复！')) clearAll()">清空全部数据</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let personaCache = null;
+
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800); }
+
+async function loadPersona(){
+  const r = await fetch('/api/persona'); const d = await r.json();
+  if(!d.ok){ toast('读取人设失败'); return; }
+  personaCache = d.persona; const p = d.persona;
+  $('p_name').value = p.name || '';
+  $('p_species').value = p.species || '';
+  $('p_backstory').value = p.backstory || '';
+  $('p_personality').value = (p.personality||[]).join('\n');
+  $('p_relationship').value = p.relationship || '';
+  $('p_max').value = (p.style && p.style.max_sentences) || 3;
+  $('p_rules').value = (p.style && p.style.reply_rules||[]).join('\n');
+  $('p_boundaries').value = (p.boundaries||[]).join('\n');
+}
+
+async function savePersona(){
+  const split = s => s.split('\n').map(x=>x.trim()).filter(Boolean);
+  const persona = {
+    ...personaCache,
+    name: $('p_name').value.trim(),
+    species: $('p_species').value.trim(),
+    backstory: $('p_backstory').value.trim(),
+    personality: split($('p_personality').value),
+    relationship: $('p_relationship').value.trim(),
+    style: { max_sentences: parseInt($('p_max').value)||3, reply_rules: split($('p_rules').value) },
+    boundaries: split($('p_boundaries').value),
+  };
+  const r = await fetch('/api/persona',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({persona})});
+  const d = await r.json();
+  if(d.ok){ toast('人设已保存，立即生效'); personaCache = d.persona; } else toast('保存失败：'+d.error);
+}
+
+function drawAffChart(hist){
+  const svg = $('aff_chart'); if(!svg) return;
+  const W = svg.clientWidth || 640, H = 150, padL = 34, padR = 10, padT = 10, padB = 18;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  let pts = [];
+  if(hist && hist.length >= 2){
+    const min = Math.min.apply(null, hist.map(x=>x.score));
+    const max = Math.max.apply(null, hist.map(x=>x.score));
+    const lo = Math.max(0, Math.floor((min-5)/5)*5), hi = Math.min(100, Math.ceil((max+5)/5)*5);
+    const span = (hi-lo) || 1;
+    const n = hist.length;
+    pts = hist.map((x,i)=>{
+      const px = padL + (n===1?0:i/(n-1))*iw;
+      const py = padT + (1-(x.score-lo)/span)*ih;
+      return [px, py, x.score];
+    });
+    let grids = '';
+    for(let v=0; v<=100; v+=25){
+      if(v<lo||v>hi) continue;
+      const gy = padT + (1-(v-lo)/span)*ih;
+      grids += '<line x1="'+padL+'" y1="'+gy+'" x2="'+(W-padR)+'" y2="'+gy+'" stroke="#f0f1f5" stroke-width="1"/>';
+      grids += '<text x="'+(padL-6)+'" y="'+(gy+4)+'" font-size="11" fill="#9aa0a8" text-anchor="end">'+v+'</text>';
+    }
+    let path = 'M'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L');
+    let dots = '';
+    const step = Math.max(1, Math.floor(pts.length/80));
+    pts.forEach((p,i)=>{ if(i%step===0){ dots += '<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.6" fill="#ff5c8a"/>'; }});
+    const last = pts[pts.length-1];
+    svg.innerHTML = grids + '<path d="'+path+'" fill="none" stroke="#ff8fb1" stroke-width="2" stroke-linejoin="round"/>' + dots +
+      '<text x="'+(last[0]-4)+'" y="'+(last[1]-8)+'" font-size="12" font-weight="600" fill="#ff5c8a" text-anchor="end">'+Math.round(last[2])+'</text>';
+  } else {
+    svg.innerHTML = '<text x="'+(W/2)+'" y="'+(H/2)+'" font-size="13" fill="#9aa0a8" text-anchor="middle">多聊几句就会开始画好感曲线啦</text>';
+  }
+}
+
+function drawDecayChart(halfDays){
+  const svg = $('decay_chart'); if(!svg) return;
+  const W = svg.clientWidth || 640, H = 150, padL = 34, padR = 10, padT = 10, padB = 18;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const days = Math.max(1, Math.ceil(halfDays * 3));
+  let grids = '';
+  for(let v=0; v<=100; v+=25){
+    const gy = padT + (1-v/100)*ih;
+    grids += '<line x1="'+padL+'" y1="'+gy+'" x2="'+(W-padR)+'" y2="'+gy+'" stroke="#f0f1f5" stroke-width="1"/>';
+    grids += '<text x="'+(padL-6)+'" y="'+(gy+4)+'" font-size="11" fill="#9aa0a8" text-anchor="end">'+v+'%</text>';
+  }
+  let path = '';
+  for(let i=0;i<=60;i++){
+    const t = i/60*days;
+    const v = 100*Math.exp(-t/halfDays);
+    const x = padL + (i/60)*iw, y = padT + (1-v/100)*ih;
+    path += (i===0?'M':' L') + x.toFixed(1)+','+y.toFixed(1);
+  }
+  svg.innerHTML = grids + '<path d="'+path+'" fill="none" stroke="#5b8def" stroke-width="2"/>' +
+    '<text x="'+(padL+iw/2)+'" y="'+(H-4)+'" font-size="11" fill="#9aa0a8" text-anchor="middle">0 ~ '+days+' 天（半衰期 '+halfDays+' 天）</text>';
+}
+
+function fmtDate(ts){
+  const d = new Date(ts*1000);
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function eventIcon(type){
+  return {level:'💞', love:'💗', health:'🤒', bigday:'🎂', goodnews:'🎉'}[type] || '💬';
+}
+function renderEvents(events){
+  const box = $('events_box');
+  if(!events || !events.length){ box.innerHTML = '<div class="empty">还没有关系事件 —— 第一次说爱你、进入新阶段、生病、生日都会记在这里</div>'; return; }
+  box.innerHTML = '<h3 style="font-size:13px;color:#4e545c;margin-bottom:10px;font-weight:600;">🕰️ 你们的关系历程</h3>' +
+    events.map(e=>'<div class="evt"><div class="dt">'+fmtDate(e.ts)+'</div><div class="ic" style="background:#fff0f5;">'+eventIcon(e.type)+'</div><div class="tx">'+e.summary.replace(/</g,'&lt;')+'</div></div>').join('');
+}
+
+async function loadState(){
+  const r = await fetch('/api/relationship'); const d = await r.json();
+  if(!d.ok){ return; }
+  const s = d.state;
+  const aff = s.affection;
+  $('aff_fill').style.width = aff + '%';
+  $('aff_num').textContent = Math.round(aff);
+  $('aff_lv').textContent = s.level;
+  $('aff_stat').textContent = '共聊了 ' + s.messages + ' 条消息';
+  let html = '';
+  for(const name of ['熟悉度','温柔度','黏人度','活泼度']){
+    const v = s.traits[name] || 50;
+    html += '<div class="trait"><div class="tt"><b>'+name+'</b><span>'+Math.round(v)+'</span></div>'+
+      '<div class="desc">'+(s.traits_desc[name]||'')+'</div>'+
+      '<input type="range" min="0" max="100" value="'+Math.round(v)+'" oninput="adjustTrait(\''+name+'\', this.value)"></div>';
+  }
+  $('traits').innerHTML = html;
+  drawAffChart(s.affection_history || []);
+  drawDecayChart(s.half_life_days || 7);
+  renderEvents(s.events || []);
+  const prof = s.profile || {};
+  const keys = Object.keys(prof);
+  if(keys.length){ $('profile_block').style.display=''; $('profile_chips').innerHTML = keys.map(k=>'<span class="chip"><b>'+k.replace(/</g,'&lt;')+'</b> · '+prof[k].replace(/</g,'&lt;')+'</span>').join(''); }
+  else { $('profile_block').style.display='none'; }
+  const sum = s.summary;
+  if(sum && sum.summary){ $('summary_block').style.display=''; $('summary_txt').textContent = sum.summary; }
+  else { $('summary_block').style.display='none'; }
+  const f = s.facts || [];
+  $('mem_note').textContent = '共 ' + s.kept_facts + ' 条生效（半衰期 ' + s.half_life_days + ' 天）';
+  if(!f.length){ $('facts_empty').style.display='block'; $('facts_body').innerHTML=''; }
+  else {
+    $('facts_empty').style.display='none';
+    $('facts_body').innerHTML = f.map(x=>{
+      const cls = x.strength>=60?'hi':(x.strength>=35?'mid':'lo');
+      return '<tr><td class="mem">'+x.key.replace(/</g,'&lt;')+'<br><span style="color:#9aa0a8;font-size:12px">'+x.value.replace(/</g,'&lt;')+'</span></td>'+
+        '<td><span class="str '+cls+'">'+x.strength+'%</span></td><td>'+x.accesses+'</td>'+
+        '<td><button class="del" onclick="deleteFact(\''+x.key.replace(/'/g,"\\'")+'\')">忘掉</button></td></tr>';
+    }).join('');
+  }
+  $('mem_note2').innerHTML = '💡 遗忘曲线：每条记忆有个「强度」，随时间按半衰期衰减（当前 ' + s.half_life_days + ' 天减半）。' +
+    '再次聊到同一件事会重新加强。强度低于 ' + Math.round(s.threshold*100) + '% 的记忆不再进入对话（即"自然遗忘"）。想手动删除就点「忘掉」。';
+}
+
+let t_timer = {};
+function adjustTrait(name, value){
+  clearTimeout(t_timer[name]);
+  t_timer[name] = setTimeout(async ()=>{
+    await fetch('/api/relationship',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trait:{[name]:parseFloat(value)}})});
+    toast(name+' 已调整为 '+Math.round(value));
+  }, 350);
+}
+
+async function deleteFact(key){
+  const r = await fetch('/api/facts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key})});
+  const d = await r.json();
+  if(d.ok){ toast('已忘记这条'); loadState(); } else toast(d.error||'删除失败');
+}
+
+async function triggerProactive(){
+  const b = $('pro_res'); b.textContent = '生成中…';
+  const r = await fetch('/api/proactive/trigger',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  const d = await r.json();
+  if(d.ok){
+    b.textContent = '已发出：' + (d.reply || '').replace(/\n/g,' ｜ ');
+    toast('主动问候已发出');
+  } else {
+    b.textContent = '失败：' + (d.error || '未知错误');
+    toast('触发失败');
+  }
+}
+
+async function clearAll(){
+  await fetch('/api/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  toast('已清空');
+  loadPersona(); loadState();
+}
+
+loadPersona(); loadState();
+setInterval(loadState, 30000);
+</script>
+</body>
+</html>
