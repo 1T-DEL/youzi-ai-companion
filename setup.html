@@ -848,9 +848,11 @@ main{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
     (async function(){
       try {
         var dir = await window.showDirectoryPicker({ mode:"readwrite" });
+        // 写 .env
         var envFile = await dir.getFileHandle(".env", { create:true });
         var w1 = await envFile.createWritable();
         await w1.write(buildEnv()); await w1.close();
+        // 写 personas/<id>.yaml
         var sub = await dir.getDirectoryHandle("personas", { create:true });
         var yfile = await sub.getFileHandle(yamlFileName(), { create:true });
         var w2 = await yfile.createWritable();
