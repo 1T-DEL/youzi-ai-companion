@@ -111,11 +111,25 @@ def extract_facts(user_text):
             for sent in user_text.replace("。", "\n").replace("，", "\n").split("\n"):
                 if kw in sent:
                     sent = sent.strip()[:80]
-                    if sent:
+                    if sent and not _negated(sent):
                         memory.set_fact(key, sent)
                         added.append(key)
                     break
     return added
+
+
+# ---- v4.1：避免错误形成记忆（小凌式"无有效观测不存证"） ----
+# 用户在否定/假设自己情况时，截句不应沉淀为"事实"（"我没有猫"不该变成"对方有猫"）。
+_NEG_HINTS = [
+    "我没有", "我不是", "我没养", "没有养", "不养", "别养",
+    "我不喜欢", "我不爱", "我不想", "我不要", "不想养", "没有猫", "没有狗",
+    "没心情", "别提", "别问", "没什么", "不太", "没空", "没时间",
+]
+
+
+def _negated(sent):
+    """一句话里出现"我没有/我不是/我不喜欢…"这类否定 → 不当作事实记忆。"""
+    return any(w in sent for w in _NEG_HINTS)
 
 
 # ---- v3：结构化画像抽取（把散句沉淀成"档案字段"） ----
@@ -133,15 +147,54 @@ PROFILE_RULES = [
 
 
 def extract_profile(user_text):
-    """从一条消息里抽取画像字段，沉淀到长期档案（同一字段被反复提起会加强）。"""
+    """从一条消息里抽取画像字段，沉淀到长期档案（同一字段被反复提起会加强）。
+    否定句（"我没有猫/我不喜欢…"）不沉淀为画像，避免错误形成记忆。"""
     if not user_text:
         return
     sents = [s.strip() for s in user_text.replace("。", "\n").replace("，", "\n").split("\n") if s.strip()]
     for field, words in PROFILE_RULES:
         for sent in sents:
+            if _negated(sent):
+                continue
             if any(w in sent for w in words):
                 memory.set_profile(field, sent[:80])
                 break
+
+
+# ---- v4.1：回答证据闸门（小凌式"回答审计"） ----
+# 对方问"你觉得我是怎样的人/你眼里的我/你喜欢我什么"这类自我认知问题时，
+# 不凭空编造或堆形容词，只基于已记住的证据回答；没有证据就如实说还在了解ta，
+# 并自然地问一两句想多了解ta的话。这比"夸夸其谈"更像真人。
+SELF_VIEW_KEYS = [
+    "我是怎样的人", "我是什么样的人", "你觉得我", "你眼里的我", "你怎么看我",
+    "你喜欢我什么", "我在你心里", "觉得我怎么样", "评价一下我", "对我的印象",
+    "你了解我吗", "你懂我吗",
+]
+
+
+def self_view_evidence(user_text):
+    """命中自我认知类问题 → 返回"证据闸门"注入块；未命中返回 None。"""
+    if not any(k in user_text for k in SELF_VIEW_KEYS):
+        return None
+    try:
+        prof = memory.all_profile()
+        items = ["你记得对方%s：%s" % (k, v[:40]) for k, v in prof.items()]
+        if len(items) < 2:
+            for f in memory.fact_stats()[:4]:
+                if f["key"].startswith("对方"):
+                    items.append("你记得：" + f["value"][:40])
+        if items:
+            evidence = "你确实记得的：\n· " + "\n· ".join(items)
+            tail = ("所以你的回答要建立在上面这些证据上——可以说出你印象中的ta，"
+                    "但不要凭空添加你没记过的性格/经历细节；想多了解时自然问一句。")
+        else:
+            evidence = "你其实还没记住多少关于ta的具体事情。"
+            tail = ("如实承认你还在慢慢了解ta（别硬编一段'你很了解ta'的漂亮话），"
+                    "然后自然地问一两句想多了解ta的话（最近在忙什么/喜欢什么）。")
+        return ("（对方在问你对ta的看法/印象。不要凭空编造或堆形容词——"
+                + evidence + " " + tail + "）")
+    except Exception:
+        return None
 
 
 # ---- v3：对话摘要归档（懒触发：每新增约25条消息，把旧对话压缩成长期记忆） ----
@@ -219,8 +272,15 @@ def generate_reply(user_text, sender_id="web"):
     for role, content in history:
         messages.append({"role": "user" if role == "user" else "assistant", "content": content})
     # ---- 活人感：情绪感知 → 动态语气指令 + 动态长度 + 小脾气 + 连发随机 ----
+    # 回答证据闸门（小凌式回答审计）：问"你觉得我是怎样的人"时先注入记忆证据，
+    # 避免凭空编造。优先级最高：命中时把语境强制为 neu——认知性问题要正面回答，
+    # 不被连续倾诉带来的 vent 指令（"多共情少追问"）带偏。
+    _ev = self_view_evidence(user_text)
     mood = liveliness.detect_mood(user_text, recent_user_texts)
     prompt_text = user_text
+    if _ev:
+        mood = "neu"
+        prompt_text = _ev + "\n\n" + prompt_text
     dyn = liveliness.dynamic_instruction(mood)
     if dyn:
         prompt_text = dyn + "\n" + prompt_text
@@ -241,6 +301,11 @@ def generate_reply(user_text, sender_id="web"):
     selfv = liveliness.maybe_self_voice_hint(mood, affection=_aff)
     if selfv:
         prompt_text = selfv + "\n" + prompt_text
+    # 追问补强（小凌式：主动获取感受）：对方聊到自己时自然追问一个具体细节
+    followup = liveliness.maybe_followup_hint(user_text, mood,
+                                              history_len=len(recent_user_texts))
+    if followup:
+        prompt_text = followup + "\n" + prompt_text
     burst = liveliness.maybe_burst_hint(mood)
     if burst:
         prompt_text = prompt_text + "\n" + burst
@@ -255,7 +320,11 @@ def generate_reply(user_text, sender_id="web"):
             prompt_text = "\n".join(cue_lines) + "\n\n" + prompt_text
     except Exception:
         pass
-    messages.append({"role": "user", "content": prompt_text})
+    # 触景生情 cue 注入（若有）在 prompt_text 最前面，这里统一给最终 user 消息
+    # 加"最新消息优先"标记——防止最近历史（尤其情绪浓的旧话题）淹没本条新消息。
+    marked = ("【这是对方最新发来的一条消息，请优先回应它；"
+              "之前的历史对话只作为背景参考，不要被旧话题带走】\n" + prompt_text)
+    messages.append({"role": "user", "content": marked})
     reply = llm.chat(messages)
     reply = liveliness.post_process(reply, mood,
                                     kaomoji_prob=float(get_cfg("KAOMOJI_PROB") or 0.30))
